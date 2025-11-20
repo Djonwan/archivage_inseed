@@ -1,0 +1,80 @@
+{% extends "base.html" %}
+{% block title %}Mes fichiers favoris - DSDS{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+
+    <!-- EN-TÊTE -->
+     <!-- TITRE FIXÉ EN HAUT -->
+    <div class="sticky-top bg-white border-bottom pb-3" style="top: 70px; z-index: 998;">
+        <div class="container-fluid d-flex justify-content-between align-items-center">
+        <h2 class="fw-bold mb-0">Mes fichiers favoris</h2>
+        </div>
+    </div>
+   
+
+    <!-- LISTE DES FICHIERS FAVORIS -->
+    {% if files %}
+    <div class="list-group list-group-flush">
+        {% for file in files %}
+        <div class="list-group-item d-flex align-items-center py-3 px-2 rounded hover-elevate mb-2">
+
+            <!-- 1. GAUCHE : Icône du fichier -->
+            <div class="me-3 text-center" style="width: 48px;">
+            {% if file.mime_type.startswith('image/') %}
+                <i class="bi bi-file-image text-success" style="font-size: 1.75rem;"></i>
+            {% elif file.mime_type.startswith('video/') %}
+                <i class="bi bi-file-play text-danger" style="font-size: 1.75rem;"></i>
+            {% elif file.mime_type.startswith('audio/') %}
+                <i class="bi bi-file-music text-info" style="font-size: 1.75rem;"></i>
+            {% elif file.original_name.endswith('.pdf') %}
+                <i class="bi bi-file-pdf text-danger" style="font-size: 1.75rem;"></i>
+            {% elif file.original_name.endswith(('.doc', '.docx')) %}
+                <i class="bi bi-file-word text-primary" style="font-size: 1.75rem;"></i>
+            {% elif file.original_name.endswith(('.xls', '.xlsx')) %}
+                <i class="bi bi-file-excel text-success" style="font-size: 1.75rem;"></i>
+            {% else %}
+                <i class="bi bi-file-earmark text-secondary" style="font-size: 1.75rem;"></i>
+            {% endif %}
+            </div>
+
+            <!-- 2. MILIEU : Infos (nom, taille, date, chemin) -->
+            <div class="flex-grow-1">
+            <div class="fw-semibold text-dark">{{ file.original_name }}</div>
+            <div class="text-muted small">
+                {{ file.size|filesizeformat }} • {{ file.upload_date.strftime('%d/%m/%Y') }}
+            </div>
+            <div class="text-primary small mt-1">
+                <i class="bi bi-folder-fill"></i>
+                {% set breadcrumb = get_folder_breadcrumb(file.folder) %}
+                {% for item in breadcrumb %}
+                {{ item.name }}{% if not loop.last %} / {% endif %}
+                {% endfor %}
+            </div>
+            </div>
+
+            <!-- 3. DROITE : Bouton Télécharger (si permission) -->
+            {% set perm = file.folder.permissions|selectattr('user_id', 'equalto', current_user.id)|first %}
+            {% set can_download = file.folder.owner_id == current_user.id or (perm and perm.can_download) %}
+            {% if can_download %}
+            <div class="ms-2">
+                <a href="{{ url_for('drive.download_file', file_id=file.id) }}"
+                class="btn btn-sm btn-outline-secondary" title="Télécharger">
+                <i class="bi bi-download"></i>
+                </a>
+            </div>
+            {% endif %}
+
+        </div>
+        {% endfor %}
+    </div>
+    {% else %}
+    <!-- Aucun favori -->
+    <div class="text-center py-5 text-muted">
+        <i class="bi bi-star" style="font-size: 3.5rem;"></i>
+        <p class="mt-3">Aucun fichier favori.</p>
+        <p class="text-muted">Cliquez sur l’étoile pour ajouter un fichier ici.</p>
+    </div>
+    {% endif %}
+</div>
+{% endblock %}

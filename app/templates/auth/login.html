@@ -1,0 +1,56 @@
+<!-- app/templates/auth/login.html -->
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>INSEED - Connexion</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+  <link href="{{ url_for('static', filename='css/style.css') }}" rel="stylesheet">
+</head>
+<body class="bg-light">
+<div class="container mt-5">
+  <div class="row justify-content-center">
+    <div class="col-md-4">
+      <div class="card shadow">
+        <div class="card-body p-4">
+          <h4 class="text-center mb-4 text-primary">Archivage INSEED</h4>
+
+          {% with messages = get_flashed_messages(with_categories=true) %}
+            {% if messages %}
+              {% for category, message in messages %}
+                <div class="alert alert-{{ 'danger' if category == 'danger' else 'success' }} alert-dismissible fade show">
+                  {{ message }}
+                  <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                </div>
+              {% endfor %}
+            {% endif %}
+          {% endwith %}
+
+          <form method="POST" action="{{ url_for('auth.login') }}" id="loginForm" novalidate>
+            <div class="mb-3">
+              <label class="form-label fw-bold">Email <span class="text-danger">*</span></label>
+              <input type="email" name="email" id="email" class="form-control" placeholder="votre@email.ne" required>
+              <div class="invalid-feedback" id="emailError"></div>
+            </div>
+
+            <div class="mb-3">
+              <label class="form-label fw-bold">Mot de passe <span class="text-danger">*</span></label>
+              <input type="password" name="password" id="password" class="form-control" required minlength="8">
+              <div class="invalid-feedback" id="passwordError"></div>
+            </div>
+
+            <button type="submit" class="btn btn-primary w-100" id="submitBtn" disabled>
+              Se connecter
+            </button>
+          </form>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+<script src="{{ url_for('static', filename='js/login.js') }}"></script>
+</body>
+</html>

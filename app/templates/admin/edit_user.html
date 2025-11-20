@@ -1,0 +1,42 @@
+{% extends "base.html" %}
+{% block title %}Modifier {{ user.name }}{% endblock %}
+
+{% block content %}
+<div class="container-fluid py-4">
+  <h2>Modifier l'utilisateur</h2>
+  <div class="card shadow">
+    <div class="card-body">
+      <form method="POST" enctype="multipart/form-data">
+        <div class="row g-3">
+          <div class="col-md-6">
+            <label>Nom</label>
+            <input type="text" name="name" value="{{ user.name }}" class="form-control" required>
+          </div>
+          <div class="col-md-6">
+            <label>Email</label>
+            <input type="email" name="email" value="{{ user.email }}" class="form-control" required>
+          </div>
+          <div class="col-md-6">
+            <label>Rôle</label>
+            <select name="role" class="form-select">
+              <option value="user" {% if user.role == 'user' %}selected{% endif %}>Utilisateur</option>
+              <option value="admin" {% if user.role == 'admin' %}selected{% endif %}>Administrateur</option>
+              <option value="super_admin" {% if user.role == 'super_admin' %}selected{% endif %}>Super Admin</option>
+            </select>
+          </div>
+          <div class="col-md-6">
+            <label>Photo de profil</label>
+            <input type="file" name="profile_picture" class="form-control" accept="image/*">
+            <img src="{{ url_for('static', filename='img/profiles/' ~ (user.profile_picture or 'default.jpg')) }}"
+                 class="mt-2 rounded-circle" width="80" height="80" style="object-fit: cover;">
+          </div>
+        </div>
+        <div class="mt-4">
+          <button type="submit" class="btn btn-primary">Sauvegarder</button>
+          <a href="{{ url_for('admin.list_users') }}" class="btn btn-secondary">Retour</a>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+{% endblock %}

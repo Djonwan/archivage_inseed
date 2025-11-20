@@ -1,0 +1,33 @@
+<!-- app/templates/admin/organigramme.html -->
+{% extends "base.html" %}
+{% block title %}Organigramme INSEED{% endblock %}
+
+{% block content %}
+<h2>Organigramme de l'INSEED</h2>
+<div class="tree">
+  <ul>
+    {% macro render_dept(dept, level=0) %}
+    <li>
+      <strong>{{ dept.name }}</strong> 
+      {% if dept.director %} (Dir: {{ dept.director.name }}){% endif %}
+      {% if dept.children %}
+      <ul>
+        {% for child in dept.children %}
+        {{ render_dept(child, level + 1) }}
+        {% endfor %}
+      </ul>
+      {% endif %}
+    </li>
+    {% endmacro %}
+
+    {% for dept in departments if not dept.parent %}
+    {{ render_dept(dept) }}
+    {% endfor %}
+  </ul>
+</div>
+
+<style>
+.tree ul { padding-left: 20px; }
+.tree li { list-style: none; margin: 5px 0; }
+</style>
+{% endblock %}

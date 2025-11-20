@@ -1,0 +1,41 @@
+<!-- app/templates/drive/folder.html -->
+{% extends "base.html" %}
+{% block title %}{{ folder.name }} - DSDS{% endblock %}
+
+{% block content %}
+<div class="sticky-top bg-white border-bottom pt-3 pb-2" style="top: 70px; z-index: 998;">
+  <div class="container-fluid d-flex justify-content-between align-items-center">
+    <h2 class="fw-bold mb-0">
+      {{ folder.name }}
+    </h2>
+    <a href="{{ url_for('drive.create_folder') }}" class="btn btn-outline-primary btn-sm">
+      Nouveau dossier
+    </a>
+  </div>
+</div>
+
+<div class="p-4">
+  <div class="card">
+    <div class="card-body">
+      <h5>Description</h5>
+      <p class="text-muted">{{ folder.description_folder or "Aucune description." }}</p>
+
+      <hr>
+
+      <h5>Fichiers dans ce dossier</h5>
+      {% if files %}
+      <ul class="list-group">
+        {% for file in files %}
+        <li class="list-group-item d-flex justify-content-between align-items-center">
+          {{ file.title }}
+          <span class="badge bg-secondary">{{ file.size|filesizeformat }}</span>
+        </li>
+        {% endfor %}
+      </ul>
+      {% else %}
+      <p class="text-muted">Aucun fichier pour le moment.</p>
+      {% endif %}
+    </div>
+  </div>
+</div>
+{% endblock %}

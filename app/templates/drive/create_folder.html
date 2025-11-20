@@ -1,0 +1,152 @@
+<!-- app/templates/drive/create_folder.html -->
+{% extends "base.html" %}
+{% block title %}Créer un dossier - DSDS{% endblock %}
+
+{% block content %}
+<div class="sticky-top bg-white border-bottom  pb-2" style="top: 70px; z-index: 998;">
+  <div class="container-fluid d-flex justify-content-between align-items-center">
+    <h2 class="fw-bold mb-0">Créer un nouveau dossier</h2>
+  </div>
+</div>
+
+<!-- TOAST DE SUCCÈS (caché par défaut) -->
+<div class="toast-container position-fixed top-0 end-0 p-3" style="z-index: 9999;">
+  <div id="successToast" class="toast align-items-center text-white bg-success border-0" role="alert">
+    <div class="d-flex">
+      <div class="toast-body" id="toastMessage"></div>
+      <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast"></button>
+    </div>
+  </div>
+</div>
+
+<div class="p-4">
+  <form id="createFolderForm" class="needs-validation" novalidate>
+    <!-- NOM -->
+    <div class="mb-3">
+      <label class="form-label fw-bold">Nom du dossier <span class="text-danger">*</span></label>
+      <input type="text" name="name" class="form-control" placeholder="Ex: Rapports 2025" required>
+      <div class="invalid-feedback">Le nom est requis.</div>
+    </div>
+
+    <!-- DESCRIPTION -->
+    <div class="mb-4">
+      <label class="form-label fw-bold">Description</label>
+      <textarea name="description" class="form-control" rows="3" placeholder="Contenu du dossier..."></textarea>
+    </div>
+
+    <!-- PERMISSIONS -->
+    <div class="card mb-4">
+      <div class="card-header bg-light d-flex justify-content-between align-items-center">
+        <strong>Partager avec</strong>
+        <button type="button" class="btn btn-sm btn-outline-primary" id="selectAllBtn">
+          Tout cocher (lecture)
+        </button>
+      </div>
+      <div class="card-body" style="max-height: 400px; overflow-y: auto;">
+        <div class="table-responsive">
+          <table class="table table-sm table-hover align-middle">
+            <thead class="table-light sticky-top">
+              <tr>
+                <th>Utilisateur</th>
+                <th class="text-center">Lire</th>
+                <th class="text-center">Modifier</th>
+                <th class="text-center">Supprimer</th>
+                <th class="text-center">Télécharger</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for user in all_users %}
+              <tr>
+                <td>
+                  <div class="d-flex align-items-center">
+                    <div class="bg-primary text-white rounded-circle d-flex align-items-center justify-content-center me-2" style="width:32px; height:32px; font-size:0.8rem;">
+                      {{ user.name[0] }}
+                    </div>
+                    <div>
+                      <strong>{{ user.name }}</strong><br>
+                      <small class="text-muted">{{ user.email }}</small>
+                      <span class="badge 
+                        {% if user.role == 'super_admin' %}bg-danger
+                        {% elif user.role == 'directeur_dsds' %}bg-warning text-dark
+                        {% elif user.role == 'divisionnaire' %}bg-info
+                        {% elif user.role == 'chef_service' %}bg-primary
+                        {% else %}bg-secondary{% endif %} ms-1">
+                        {{ user.role | replace('_', ' ') | title }}
+                      </span>
+                    </div>
+                  </div>
+                </td>
+                <td class="text-center"><input type="checkbox" name="perm_{{ user.id }}_read" checked></td>
+                <td class="text-center"><input type="checkbox" name="perm_{{ user.id }}_edit"></td>
+                <td class="text-center"><input type="checkbox" name="perm_{{ user.id }}_delete"></td>
+                <td class="text-center"><input type="checkbox" name="perm_{{ user.id }}_download" checked></td>
+              </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- SUBMIT -->
+    <div class="text-end">
+      <button type="submit" class="btn btn-primary px-5" id="submitBtn">
+        <span class="spinner-border spinner-border-sm d-none" id="spinner"></span>
+        Créer le dossier
+      </button>
+    </div>
+  </form>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+  // Toast Bootstrap
+  const toastEl = document.getElementById('successToast');
+  const toast = new bootstrap.Toast(toastEl);
+
+  document.getElementById('selectAllBtn').addEventListener('click', () => {
+    document.querySelectorAll('input[name*="_read"], input[name*="_download"]').forEach(cb => cb.checked = true);
+  });
+
+  document.getElementById('createFolderForm').addEventListener('submit', async function(e) {
+    e.preventDefault();
+    const spinner = document.getElementById('spinner');
+    const submitBtn = document.getElementById('submitBtn');
+    spinner.classList.remove('d-none');
+    submitBtn.disabled = true;
+
+    const formData = new FormData(this);
+
+    try {
+      const response = await fetch('{{ url_for("drive.create_folder") }}', {
+        method: 'POST',
+        body: formData
+      });
+
+      const result = await response.json();
+
+      if (result.success) {
+        // AFFICHER TOAST
+        document.getElementById('toastMessage').textContent = result.message;
+        toast.show();
+
+        // VIDER LE FORMULAIRE
+        this.reset();
+        document.querySelectorAll('input[type="checkbox"]').forEach(cb => cb.checked = false);
+        document.querySelectorAll('input[name*="_read"], input[name*="_download"]').forEach(cb => cb.checked = true);
+
+        // Optionnel : aller au dossier
+        // window.location.href = `/drive/folder/${result.folder_id}`;
+      } else {
+        alert('Erreur : ' + result.error);
+      }
+    } catch (err) {
+      alert('Erreur réseau. Veuillez réessayer.');
+    } finally {
+      spinner.classList.add('d-none');
+      submitBtn.disabled = false;
+    }
+  });
+</script>
+{% endblock %}

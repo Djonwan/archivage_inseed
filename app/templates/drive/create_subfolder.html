@@ -1,0 +1,129 @@
+<!-- app/templates/drive/create_subfolder.html -->
+{% extends "base.html" %}
+{% block title %}Créer un sous-dossier - {{ parent_folder.name }}{% endblock %}
+
+{% block content %}
+<div class="sticky-top bg-white border-bottom pt-3 pb-2" style="top: 70px; z-index: 998;">
+  <div class="container-fluid d-flex justify-content-between align-items-center">
+    <h2 class="fw-bold mb-0">Sous-dossier dans : {{ parent_folder.name }}</h2>
+  </div>
+</div>
+
+<!-- Toast succès -->
+<div class="toast-container position-fixed top-0 end-0 p-3" style="z-index: 9999;">
+  <div id="successToast" class="toast align-items-center text-white bg-success border-0" role="alert">
+    <div class="d-flex">
+      <div class="toast-body" id="toastMessage"></div>
+      <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast"></button>
+    </div>
+  </div>
+</div>
+
+<div class="p-4">
+  <form id="createSubfolderForm" class="needs-validation" novalidate>
+    <input type="hidden" name="parent_id" value="{{ parent_folder.id }}">
+
+    <div class="mb-3">
+      <label class="form-label fw-bold">Nom du sous-dossier <span class="text-danger">*</span></label>
+      <input type="text" name="name" class="form-control" placeholder="Ex: Rapports Q4" required>
+      <div class="invalid-feedback">Le nom est requis.</div>
+    </div>
+
+    <div class="mb-4">
+      <label class="form-label fw-bold">Description</label>
+      <textarea name="description" class="form-control" rows="3" placeholder="Contenu du sous-dossier..."></textarea>
+    </div>
+
+    <!-- Permissions restreintes -->
+    <div class="card mb-4">
+      <div class="card-header bg-light">
+        <strong>Partager avec (seulement ceux qui ont accès au dossier parent)</strong>
+      </div>
+      <div class="card-body" style="max-height: 400px; overflow-y: auto;">
+        <div class="table-responsive">
+          <table class="table table-sm table-hover align-middle">
+            <thead class="table-light sticky-top">
+              <tr>
+                <th>Utilisateur</th>
+                <th class="text-center">Lire</th>
+                <th class="text-center">Modifier</th>
+                <th class="text-center">Supprimer</th>
+                <th class="text-center">Télécharger</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for user in users_with_access %}
+              <tr>
+                <td>
+                  <div class="d-flex align-items-center">
+                    <div class="bg-primary text-white rounded-circle d-flex align-items-center justify-content-center me-2" style="width:32px; height:32px; font-size:0.8rem;">
+                      {{ user.name[0] }}
+                    </div>
+                    <div>
+                      <strong>{{ user.name }}</strong><br>
+                      <small class="text-muted">{{ user.email }}</small>
+                    </div>
+                  </div>
+                </td>
+                <td class="text-center"><input type="checkbox" name="perm_{{ user.id }}_read" checked></td>
+                <td class="text-center"><input type="checkbox" name="perm_{{ user.id }}_edit"></td>
+                <td class="text-center"><input type="checkbox" name="perm_{{ user.id }}_delete"></td>
+                <td class="text-center"><input type="checkbox" name="perm_{{ user.id }}_download" checked></td>
+              </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <div class="text-end">
+      <button type="submit" class="btn btn-success px-5" id="submitBtn">
+        <span class="spinner-border spinner-border-sm d-none" id="spinner"></span>
+        Créer le sous-dossier
+      </button>
+    </div>
+  </form>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+  const toastEl = document.getElementById('successToast');
+  const toast = new bootstrap.Toast(toastEl);
+
+  document.getElementById('createSubfolderForm').addEventListener('submit', async function(e) {
+    e.preventDefault();
+    const spinner = document.getElementById('spinner');
+    const submitBtn = document.getElementById('submitBtn');
+    spinner.classList.remove('d-none');
+    submitBtn.disabled = true;
+
+    const formData = new FormData(this);
+
+    try {
+      const response = await fetch('{{ url_for("drive.create_subfolder", folder_id=parent_folder.id) }}', {
+        method: 'POST',
+        body: formData
+      });
+
+      const result = await response.json();
+
+      if (result.success) {
+        document.getElementById('toastMessage').textContent = result.message;
+        toast.show();
+        setTimeout(() => {
+          window.location.href = `{{ url_for('drive.folder', folder_id=parent_folder.id) }}`;
+        }, 1500);
+      } else {
+        alert('Erreur : ' + result.error);
+      }
+    } catch (err) {
+      alert('Erreur réseau.');
+    } finally {
+      spinner.classList.add('d-none');
+      submitBtn.disabled = false;
+    }
+  });
+</script>
+{% endblock %}

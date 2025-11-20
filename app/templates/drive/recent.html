@@ -1,0 +1,98 @@
+{% extends "base.html" %}
+{% block title %}Récents - DSDS{% endblock %}
+
+{% block content %}
+<div class="container-fluid px-4">
+
+  <!-- Titre sticky -->
+  <div class="sticky-top bg-white border-bottom pb-3 pt-2" style="top: 70px; z-index: 998;">
+    <h2 class="fw-bold mb-0">Récents</h2>
+  </div>
+
+  <!-- Grille de cartes -->
+  <div class="row row-cols-1 row-cols-sm-2 row-cols-md-3 row-cols-lg-4 g-3 mt-2">
+    {% if activities %}
+      {% for act in activities %}
+        {% set item = act.file or act.folder %}
+        {% set is_file = act.file is not none %}
+
+        <div class="col">
+          <a href="{% if is_file %}{{ url_for('drive.folder', folder_id=item.folder_id) }}{% else %}{{ url_for('drive.folder', folder_id=item.id) }}{% endif %}"
+             class="text-decoration-none">
+            <div class="card h-100 shadow-sm hover-shadow transition-ease border-0 rounded-3">
+              
+              <!-- Icône centrée -->
+              <div class="card-body text-center py-3">
+                <div class="mb-2">
+                  {% if is_file %}
+                    {% if item.mime_type.startswith('image/') %}
+                      <i class="bi bi-file-image text-success" style="font-size: 2.2rem;"></i>
+                    {% elif '.pdf' in item.original_name|lower %}
+                      <i class="bi bi-file-pdf text-danger" style="font-size: 2.2rem;"></i>
+                    {% else %}
+                      <i class="bi bi-file-earmark text-secondary" style="font-size: 2.2rem;"></i>
+                    {% endif %}
+                  {% else %}
+                    <i class="bi bi-folder-fill text-warning" style="font-size: 2.2rem;"></i>
+                  {% endif %}
+                </div>
+
+                <!-- Nom (tronqué) -->
+                <div class="fw-semibold text-dark small text-truncate" style="max-width: 140px; margin: 0 auto;">
+                  {{ item.original_name|default(item.name, true) }}
+                </div>
+
+                <!-- Taille + date -->
+                <div class="text-muted smaller mt-1">
+                  {{ item.size|filesizeformat if is_file else 'Dossier' }}
+                </div>
+                <div class="text-muted smaller">
+                  {{ act.timestamp.strftime('%d/%m %H:%M') }}
+                </div>
+
+                <!-- Badge d'action -->
+                <div class="mt-2">
+                  <span class="badge rounded-pill text-white
+                    {% if act.action == 'created' %}bg-success
+                    {% elif act.action == 'uploaded' %}bg-info
+                    {% elif act.action == 'renamed' %}bg-warning
+                    {% elif act.action == 'opened' %}bg-secondary
+                    {% elif act.action == 'downloaded' %}bg-primary
+                    {% endif %} small">
+                    {{ 
+                      {'created': 'Créé', 'uploaded': 'Uploadé', 'renamed': 'Renommé', 
+                       'opened': 'Ouvert', 'downloaded': 'Téléchargé'}[act.action]
+                    }}
+                    {% if act.user_id != current_user.id %}
+                      • {{ act.user.username }}
+                    {% endif %}
+                  </span>
+                </div>
+              </div>
+
+              <!-- Bouton télécharger (en bas à droite) -->
+              {% if is_file and user_can(item.folder, 'download') %}
+                <div class="position-absolute bottom-0 end-0 p-2">
+                  <a href="{{ url_for('drive.download_file', file_id=item.id) }}"
+                     class="btn btn-sm btn-outline-secondary rounded-circle p-1 shadow-sm"
+                     title="Télécharger" onclick="event.stopPropagation();">
+                    <i class="bi bi-download"></i>
+                  </a>
+                </div>
+              {% endif %}
+
+            </div>
+          </a>
+        </div>
+      {% endfor %}
+    {% else %}
+      <!-- Vide -->
+      <div class="col-12 text-center py-5">
+        <i class="bi bi-clock-history text-muted" style="font-size: 3.5rem;"></i>
+        <p class="mt-3 text-muted">Aucune activité récente.</p>
+      </div>
+    {% endif %}
+  </div>
+
+</div>
+{% endblock %}

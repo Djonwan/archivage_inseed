@@ -1,0 +1,75 @@
+{% extends "base.html" %}
+{% block title %}Accueil - Mon Drive{% endblock %}
+
+{% block content %}
+
+  <!-- TITRE FIXÉ EN HAUT -->
+  <div class="sticky-top bg-white border-bottom pb-2" style="top: 70px; z-index: 998;">
+    <div class="container-fluid d-flex justify-content-between align-items-center">
+      <h2 class="fw-bold mb-0">Bienvenue au archivage des données</h2>
+    </div>
+  </div>
+
+  <!-- SECTION HÉROS -->
+  <div class="container mt-5">
+    <div class="row g-4">
+      <div class="col-md-4">
+        <div class="hero-card">
+          <img src="{{ url_for('static', filename='img/dossier-bureau.jpg') }}" alt="Archivage 1">
+          <div class="title-banner">Archivage de Documents</div>
+        </div>
+      </div>
+      <div class="col-md-4">
+        <div class="hero-card">
+          <img src="{{ url_for('static', filename='img/business.jpg') }}" alt="Archivage 2">
+          <div class="title-banner">Partage & Sécurité</div>
+        </div>
+      </div>
+      <div class="col-md-4">
+        <div class="hero-card">
+          <img src="{{ url_for('static', filename='img/ordinateur.avif') }}" alt="Archivage 3">
+          <div class="title-banner">Recherche Intelligente</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- MES DOSSIERS (en bas) -->
+  <div class="container mt-5">
+    <h3 class="mb-4">
+      <i class="bi bi-folder me-2"></i>Mes dossiers
+    </h3>
+
+    {% if folders %}
+      <div class="row row-cols-1 row-cols-md-3 row-cols-lg-4 g-3">
+        {% for folder in folders %}
+          <div class="col">
+            <a href="{{ url_for('drive.folder', folder_id=folder.id) }}"
+               class="text-decoration-none">
+              <div class="card h-100 shadow-sm hover-elevate border-0">
+                <div class="card-body text-center p-3">
+                  <i class="bi bi-folder-fill text-warning" style="font-size: 2.5rem;"></i>
+                  <div class="mt-2 fw-semibold text-dark small">
+                    {{ folder.name }}
+                  </div>
+                  <div class="text-muted small">
+                    {{ folder.created_at.strftime('%d/%m/%Y') }}
+                  </div>
+                </div>
+              </div>
+            </a>
+          </div>
+        {% endfor %}
+      </div>
+    {% else %}
+      <div class="text-center py-5 text-muted">
+        <i class="bi bi-folder" style="font-size: 3rem;"></i>
+        <p class="mt-3">Aucun dossier créé.</p>
+        <a href="{{ url_for('drive.explore') }}" class="btn btn-outline-primary btn-sm">
+          Explorer
+        </a>
+      </div>
+    {% endif %}
+  </div>
+
+{% endblock %}

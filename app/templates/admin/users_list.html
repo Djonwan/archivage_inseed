@@ -1,0 +1,73 @@
+{% extends "base.html" %}
+{% block title %}Gestion des utilisateurs{% endblock %}
+
+{% block content %}
+<div class="container-fluid py-4">
+  <div class="d-flex justify-content-between align-items-center mb-4">
+    <h2>Gestion des utilisateurs</h2>
+    <a href="{{ url_for('admin.create_user') }}" class="btn btn-success">
+      <i class="bi bi-person-plus"></i> Ajouter un utilisateur
+    </a>
+  </div>
+
+  <div class="card shadow">
+    <div class="card-body p-0">
+      <div class="table-responsive">
+        <table class="table table-hover mb-0">
+          <thead class="table-light">
+            <tr>
+              <th>Photo</th>
+              <th>Nom</th>
+              <th>Email</th>
+              <th>Rôle</th>
+              <th class="text-center">Actions</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for u in users %}
+            <tr>
+              <td>
+                <img src="{{ url_for('static', filename='img/profiles/' ~ (u.profile_picture or 'default.jpg')) }}"
+                     class="rounded-circle" width="40" height="40" style="object-fit: cover;">
+              </td>
+              <td class="fw-500">{{ u.name }}</td>
+              <td>{{ u.email }}</td>
+              <td>
+                <span class="badge bg-{% if u.role == 'super_admin' %}danger{% elif u.role == 'admin' %}warning{% else %}secondary{% endif %}">
+                  {{ u.role.replace('_', ' ') | title }}
+                </span>
+              </td>
+              <td class="text-center">
+                <a href="{{ url_for('admin.edit_user', user_id=u.id) }}" class="btn btn-sm btn-outline-primary">
+                  <i class="bi bi-pencil"></i>
+                </a>
+                <button class="btn btn-sm btn-outline-danger" 
+                        onclick="deleteUser({{ u.id }}, '{{ u.name }}')">
+                  <i class="bi bi-trash"></i>
+                </button>
+              </td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+function deleteUser(id, name) {
+  if (confirm(`Supprimer définitivement l'utilisateur "${name}" ?`)) {
+    fetch(`/admin/users/${id}/delete`, { method: 'POST' })
+      .then(r => r.json())
+      .then(data => {
+        if (data.success) {
+          location.reload();
+        } else {
+          alert(data.message || "Erreur lors de la suppression");
+        }
+      });
+  }
+}
+</script>
+{% endblock %}

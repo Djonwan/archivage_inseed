@@ -1,0 +1,618 @@
+<!DOCTYPE html>
+<html lang="fr">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>{% block title %}Portail DSDS{% endblock %}</title>
+
+  <!-- Bootstrap + Icons -->
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet" />
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css" rel="stylesheet" />
+  <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&display=swap" rel="stylesheet" />
+
+
+  <style>
+    body {
+      background-color: #f3f5ff;
+    }
+
+    .hero-card {
+      border-radius: 18px;
+      overflow: hidden;
+      box-shadow: 0 6px 18px rgba(0, 0, 0, .25);
+      position: relative;
+      height: 270px;
+      /* 80% de la taille précédente */
+      cursor: pointer;
+      transition: transform .25s ease;
+      background: white;
+    }
+
+    .hero-card img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      transition: transform .55s ease;
+    }
+
+    .hero-card:hover img {
+      transform: scale(1.2);
+      /* zoom sans bouger le cadre */
+    }
+
+    .title-banner {
+      position: absolute;
+      bottom: 0;
+      width: 100%;
+      background: rgba(0, 0, 0, .55);
+      color: white;
+      text-align: center;
+      font-size: 1.35rem;
+      font-weight: bold;
+      padding: 8px;
+    }
+  </style>
+
+  <style>
+    :root {
+      --google-blue: #1a73e8;
+      --google-gray: #5f6368;
+      --border-color: #dadce0;
+    }
+
+    body {
+      font-family: 'Roboto', sans-serif;
+      background-color: #f8f9fa;
+      color: #3c4043;
+      margin: 0;
+      padding: 0;
+      overflow-x: hidden;
+    }
+
+    /* === SIDEBAR FIXE === */
+    .sidebar {
+      width: 280px;
+      background-color: #fff;
+      height: 100vh;
+      position: fixed;
+      top: 0;
+      left: 0;
+      border-right: 1px solid var(--border-color);
+      padding-top: 1rem;
+      overflow-y: auto;
+      z-index: 1000;
+    }
+
+    .sidebar .logo {
+      padding: 0 1.5rem;
+      margin-bottom: 1.5rem;
+    }
+
+    .sidebar .nav-link {
+      color: #5f6368;
+      font-weight: 500;
+      padding: 0.6rem 1.5rem;
+      border-radius: 0 25px 25px 0;
+      margin: 0 1rem 0.25rem;
+      display: flex;
+      align-items: center;
+    }
+
+    .sidebar .nav-link i {
+      margin-right: 1rem;
+      font-size: 1.2rem;
+      width: 24px;
+      text-align: center;
+    }
+
+    .sidebar .nav-link:hover,
+    .sidebar .nav-link.active {
+      background-color: #f1f3f4;
+      color: var(--google-blue);
+    }
+
+    /* === HEADER FIXE === */
+    .top-header {
+      position: fixed;
+      top: 0;
+      left: 280px;
+      /* Après le sidebar */
+      right: 0;
+      height: 70px;
+      background-color: #fff;
+      border-bottom: 1px solid var(--border-color);
+      padding: 0.75rem 2rem;
+      z-index: 999;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    /* === CONTENU PRINCIPAL === */
+    .main-content {
+      margin-left: 280px;
+      margin-top: 70px;
+      /* Hauteur du header */
+      padding: 1.5rem 2rem;
+      min-height: calc(100vh - 70px);
+      background-color: #f8f9fa;
+    }
+
+    /* === Ajustement barre de recherche === */
+    .search-bar .input-group {
+      width: 350px;
+    }
+
+    .btn-light1:hover {
+      border-color: #dadce0;
+      background-color: #f3f1f1;
+    }
+
+    .sticky-top {
+      background-color: #f8f9fa !important;
+
+    }
+  </style>
+
+  <style>
+    .hover-shadow {
+      transition: all 0.2s ease;
+    }
+
+    .hover-shadow:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 8px 20px rgba(0, 0, 0, 0.1) !important;
+    }
+
+    .transition-ease {
+      transition: all 0.3s ease;
+    }
+
+    .smaller {
+      font-size: 0.75rem;
+    }
+  </style>
+
+  {% block styles %}{% endblock %}
+</head>
+
+<!-- MODAL NOTIFICATIONS -->
+<!-- MODAL NOTIFICATIONS -->
+<div class="modal fade" id="notificationsModal" tabindex="-1">
+  <div class="modal-dialog modal-dialog-scrollable">
+    <div class="modal-content">
+      <div class="modal-header border-0 pb-2">
+        <h5 class="modal-title">Notifications</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body pt-0">
+        {% if notifications %}
+          {% for notif in notifications %}
+            <div class="d-flex align-items-start py-3 px-2 border-bottom hover-shadow rounded {{ 'bg-light' if not notif.is_read else '' }}"
+                 style="cursor: pointer;"
+                 onclick="markAsReadAndGo({{ notif.id }}, '{{ notif.url|e }}')">
+              <div class="flex-shrink-0 me-3">
+                <i class="bi bi-bell text-primary fs-5"></i>
+              </div>
+              <div class="flex-grow-1">
+                <strong>{{ notif.title }}</strong><br>
+                <small class="text-muted">{{ notif.message }}</small><br>
+                <small class="text-muted smaller">
+                  {{ notif.created_at.strftime('%d/%m à %Hh%M') }}
+                </small>
+              </div>
+              {% if not notif.is_read %}
+                <span class="badge bg-primary rounded-pill">•</span>
+              {% endif %}
+            </div>
+          {% endfor %}
+        {% else %}
+          <p class="text-center text-muted py-5">Aucune notification</p>
+        {% endif %}
+      </div>
+      <div class="modal-footer border-0">
+        <a href="{{ url_for('drive.notifications') }}" class="btn btn-sm btn-outline-primary w-100">
+          Voir toutes les notifications
+        </a>
+      </div>
+    </div>
+  </div>
+</div>
+
+
+<script>
+// Barre de recherche globale intelligente
+document.addEventListener('DOMContentLoaded', function () {
+  const searchInput = document.getElementById('globalSearch');
+  const resultsContainer = document.getElementById('searchResults');
+  const noResults = document.getElementById('noResults');
+  const searching = document.getElementById('searching');
+  const clearBtn = document.getElementById('clearSearch');
+  let timeout = null;
+
+  // Effacer la recherche
+  clearBtn.addEventListener('click', function () {
+    searchInput.value = '';
+    resultsContainer.style.display = 'none';
+    clearBtn.style.display = 'none';
+    searchInput.focus();
+  });
+
+  // Écouter la saisie
+  searchInput.addEventListener('input', function () {
+    const query = this.value.trim();
+
+    if (query.length === 0) {
+      resultsContainer.style.display = 'none';
+      clearBtn.style.display = 'none';
+      return;
+    }
+
+    clearBtn.style.display = 'block';
+    resultsContainer.style.display = 'block';
+    noResults.style.display = 'none';
+    searching.style.display = 'block';
+
+    // Débounce : attendre 300ms avant de lancer la recherche
+    clearTimeout(timeout);
+    timeout = setTimeout(() => {
+      performSearch(query);
+    }, 300);
+  });
+
+  // Fermer les résultats en cliquant ailleurs
+  document.addEventListener('click', function (e) {
+    if (!searchInput.contains(e.target) && !resultsContainer.contains(e.target)) {
+      resultsContainer.style.display = 'none';
+    }
+  });
+
+  function performSearch(query) {
+    fetch(`/drive/search?q=${encodeURIComponent(query)}`)
+      .then(response => response.json())
+      .then(data => {
+        searching.style.display = 'none';
+        const resultsHTML = [];
+
+        if (data.files.length === 0 && data.folders.length === 0) {
+          noResults.style.display = 'block';
+          return;
+        }
+
+        // Fichiers
+        data.files.forEach(file => {
+          resultsHTML.push(`
+            <a href="${file.url}" class="d-block px-3 py-2 text-decoration-none hover-bg-light">
+              <div class="d-flex align-items-center">
+                <i class="bi bi-file-earmark-text text-primary me-3" style="font-size:1.3rem;"></i>
+                <div class="flex-grow-1">
+                  <div class="fw-semibold text-dark">${escapeHtml(file.name)}</div>
+                  <small class="text-muted">Fichier • ${file.folder_path || 'Racine'}</small>
+                </div>
+                <small class="text-muted">${file.size}</small>
+              </div>
+            </a>
+          `);
+        });
+
+        // Dossiers
+        data.folders.forEach(folder => {
+          resultsHTML.push(`
+            <a href="${folder.url}" class="d-block px-3 py-2 text-decoration-none hover-bg-light border-top">
+              <div class="d-flex align-items-center">
+                <i class="bi bi-folder-fill text-warning me-3" style="font-size:1.3rem;"></i>
+                <div class="flex-grow-1">
+                  <div class="fw-semibold text-dark">${escapeHtml(folder.name)}</div>
+                  <small class="text-muted">Dossier • ${folder.path}</small>
+                </div>
+              </div>
+            </a>
+          `);
+        });
+
+        resultsContainer.innerHTML = resultsHTML.join('');
+      })
+      .catch(() => {
+        noResults.style.display = 'block';
+        noResults.innerHTML = 'Erreur de recherche';
+      });
+  }
+
+  function escapeHtml(text) {
+    const div = document.createElement('div');
+    div.textContent = text;
+    return div.innerHTML;
+  }
+});
+</script>
+
+
+<script>
+  // Mise à jour de la taille totale des fichiers
+  function updateTotalStorage() {
+    fetch('/drive/storage/total')
+      .then(r => r.json())
+      .then(data => {
+        document.getElementById('totalStorage').textContent = data.total_human;
+      })
+      .catch(() => {
+        document.getElementById('totalStorage').textContent = '—';
+      });
+  }
+
+  // Au chargement + toutes les 20 secondes
+  document.addEventListener('DOMContentLoaded', updateTotalStorage);
+  setInterval(updateTotalStorage, 20000);
+
+  // Optionnel : mise à jour après upload (si tu as un événement)
+  document.addEventListener('file:uploaded', updateTotalStorage);
+</script>
+
+
+
+<body>
+
+  <!-- === SIDEBAR FIXE === -->
+  <div class="sidebar">
+    <div class="logo">
+      <img src="{{ url_for('static', filename='img/logo.png') }}" alt="LOGO" width="120">
+    </div>
+    <ul class="nav flex-column">
+      <li class="nav-item">
+        <a class="nav-link {% if request.endpoint in ['drive.home', 'dashboard.index'] %}active{% endif %}"
+          href="{{ url_for('drive.home') }}">
+          <i class="bi bi-house"></i> Accueil
+        </a>
+      </li>
+
+      <li class="nav-item">
+        <a class="nav-link {% if request.endpoint == 'drive.explore' %}active{% endif %}"
+          href="{{ url_for('drive.explore') }}">
+          <i class="bi bi-folder"></i> Mon Espace
+        </a>
+      </li>
+      <li class="nav-item">
+        <a class="nav-link {% if request.endpoint == 'drive.create_folder' %}active{% endif %}"
+          href="{{ url_for('drive.create_folder') }}">
+          <i class="bi bi-folder-plus"></i> Nouveau Dossier
+        </a>
+      </li>
+      <li class="nav-item">
+        <a class="nav-link {% if request.endpoint == 'drive.favorites' %}active{% endif %}"
+          href="{{ url_for('drive.favorites') }}">
+          <i class="bi bi-star"></i> Étoilés
+        </a>
+      </li>
+
+      <li class="nav-item">
+        <a class="nav-link   {% if request.endpoint == 'drive.recent' %}active{% endif %}"
+          href="{{ url_for('drive.recent') }}">
+          <i class="bi bi-clock-history"></i> Récents
+        </a>
+      </li>
+
+      <li class="nav-item">
+        <a class="nav-link  {% if request.endpoint == 'drive.trash' %}active{% endif %}"
+          href="{{ url_for('drive.trash') }}">
+          <i class="bi bi-trash"></i> Corbeille
+        </a>
+      </li>
+    </ul>
+
+
+    <div class="mt-auto p-3">
+      <div class="d-flex align-items-center">
+        <i class="bi bi-hdd me-2 text-primary"></i>
+        <div>
+          <small class="text-muted d-block">Taille total de vos données</small>
+          <strong  id="totalStorage" class="text-dark">0 o</strong>
+        </div>
+      </div>
+    </div>
+
+
+
+
+    
+  </div>
+
+  <!-- === HEADER FIXE === -->
+  <div class="top-header">
+    <!-- BARRE DE RECHERCHE -->
+    <!-- BARRE DE RECHERCHE GLOBALE -->
+    <div class="search-container position-relative">
+
+
+
+      <div class="input-group shadow-sm">
+        <span class="input-group-text bg-white border-end-0 text-muted">
+          <i class="bi bi-search"></i>
+        </span>
+        <input type="text" 
+              class="form-control border-start-0" 
+              placeholder="Rechercher dans Archivage INSEED..." 
+              id="globalSearch" 
+              autocomplete="off"
+              style="padding-right: 75px;">
+        <span class="input-group-text bg-white border-start-0 text-muted cursor-pointer" id="clearSearch" style="display:none;">
+          <i class="bi bi-x-lg"></i>
+        </span>
+      </div>
+
+
+      
+
+      <!-- RÉSULTATS DE RECHERCHE (dropdown) -->
+      <div id="searchResults" 
+          class="position-absolute top-100 start-0 end-0 bg-white border rounded-bottom shadow-lg mt-1" 
+          style="z-index: 1050; max-height: 70vh; overflow-y: auto; display: none;">
+        <div class="p-3 text-center text-muted small" id="noResults" style="display:none;">
+          <i class="bi bi-search"></i><br>
+          Aucun résultat trouvé
+        </div>
+        <div class="p-3 text-center text-muted small" id="searching">
+          <div class="spinner-border spinner-border-sm" role="status"></div>
+          <span class="ms-2">Recherche en cours...</span>
+        </div>
+      </div>
+    </div>
+    
+
+
+
+
+
+    <!-- ACTIONS + USER -->
+    <div class="d-flex gap-2 align-items-center">
+      <!-- jfngkjdnwksnijfl -->
+      <!-- BADGE CLOCHE – VERSION DYNAMIQUE (à coller dans ton header) -->
+      <div class="position-relative">
+        <button class="btn btn-light1" data-bs-toggle="modal" data-bs-target="#notificationsModal">
+          <i class="bi bi-bell fs-4"></i>
+          {% if unread_count > 0 %}
+            <span class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger"
+                  style="font-size: 0.65rem; min-width: 19px; height: 19px; display: flex; align-items: center; justify-content: center;">
+              {{ unread_count if unread_count < 100 else '99+' }}
+              <span class="visually-hidden">notifications non lues</span>
+            </span>
+          {% endif %}
+        </button>
+      </div>
+
+
+
+
+      <button class="btn btn-light1"><i class="bi bi-gear fs-4"></i></button>
+      <!-- USER DROPDOWN -->
+      {% if current_user.is_authenticated %}
+      <div class="dropdown">
+        <button class="btn btn-light1 rounded-circle overflow-hidden p-0 border" data-bs-toggle="dropdown"
+          style="width:42px; height:42px;">
+          {% if current_user.profile_picture and current_user.profile_picture != 'default.jpg' %}
+          <img src="{{ url_for('static', filename='img/profiles/' ~ current_user.profile_picture) }}" alt="Profil"
+            class="w-100 h-100" style="object-fit: cover;">
+          {% else %}
+          <img src="{{ url_for('static', filename='img/profiles/default.jpg') }}" alt="Profil" class="w-100 h-100"
+            style="object-fit: cover;">
+          {% endif %}
+        </button>
+
+        <ul class="dropdown-menu dropdown-menu-end">
+          <li>
+            <div class="dropdown-item-text text-center py-3">
+              <img
+                src="{{ url_for('static', filename='img/profiles/' ~ (current_user.profile_picture or 'default.jpg')) }}"
+                class="rounded-circle mb-2" width="70" height="70"
+                style="object-fit: cover; border: 3px solid #fff; box-shadow: 0 2px 8px rgba(0,0,0,0.2);">
+              <div>
+                <strong class="d-block">{{ current_user.name }}</strong>
+                <small class="text-muted">{{ current_user.email }}</small>
+                <small class="badge bg-primary mt-1">{{ current_user.role.replace('_', ' ') | title }}</small>
+              </div>
+            </div>
+          </li>
+          <li>
+            <hr class="dropdown-divider">
+          </li>
+
+          <!-- Visible UNIQUEMENT pour super_admin -->
+          {% if current_user.is_super_admin() %}
+          <li>
+            <a class="dropdown-item text-success fw-500" href="{{ url_for('admin.create_user') }}">
+              <i class="bi bi-person-plus-fill"></i> Ajouter un utilisateur
+            </a>
+          </li>
+          <li>
+            <a class="dropdown-item text-primary fw-500" href="{{ url_for('admin.list_users') }}">
+              <i class="bi bi-people-fill"></i> Gestion des utilisateurs
+            </a>
+          </li>
+          <li>
+            <hr class="dropdown-divider">
+          </li>
+          {% endif %}
+
+          <li><a class="dropdown-item text-danger" href="{{ url_for('auth.logout') }}">
+              <i class="bi bi-box-arrow-right"></i> Déconnexion
+            </a></li>
+        </ul>
+      </div>
+      {% endif %}
+    </div>
+  </div>
+
+  <!-- === CONTENU SCROLLABLE === -->
+  <div class="main-content">
+    <!-- FLASH MESSAGES -->
+    {% with messages = get_flashed_messages(with_categories=true) %}
+    {% if messages %}
+    {% for category, message in messages %}
+    <div class="alert alert-{{ 'danger' if category == 'danger' else 'success' }} alert-dismissible fade show">
+      {{ message }}
+      <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    </div>
+    {% endfor %}
+    {% endif %}
+    {% endwith %}
+
+    <!-- PAGE CONTENT -->
+    {% block content %}{% endblock %}
+  </div>
+
+  <!-- Bootstrap JS -->
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+
+  <script>
+    function markAsReadAndGo(notifId, url) {
+      // Empêche double clic
+      const item = event.currentTarget;
+      if (item.dataset.processing) return;
+      item.dataset.processing = 'true';
+      item.style.opacity = '0.7';
+
+      fetch(`/drive/notification/${notifId}/read`, {
+        method: 'POST',
+        headers: {
+          'X-Requested-With': 'XMLHttpRequest'
+        }
+      })
+      .then(r => r.json())
+      .then(data => {
+        if (data.success) {
+          // 1. Marque comme lue dans le modal
+          item.classList.remove('bg-light');
+          item.querySelector('.badge')?.remove();
+
+          // 2. Décrémente le badge principal (celui dans le header)
+          const badge = document.querySelector('.top-header .badge.bg-danger');
+          if (badge) {
+            let count = parseInt(badge.textContent.replace(/[^\d]/g, '')) || 0;
+            count--;
+            if (count > 0) {
+              badge.textContent = count > 99 ? '99+' : count;
+            } else {
+              badge.remove();
+            }
+          }
+
+          // 3. Ferme le modal + redirection
+          const modal = bootstrap.Modal.getInstance(document.getElementById('notificationsModal'));
+          modal.hide();
+          setTimeout(() => {
+            window.location.href = url;
+          }, 300);
+        }
+      })
+      .catch(() => {
+        item.style.opacity = '1';
+        delete item.dataset.processing;
+      });
+    }
+  </script>
+
+
+  {% block scripts %}{% endblock %}
+</body>
+
+</html>

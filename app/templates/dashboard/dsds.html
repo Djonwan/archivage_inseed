@@ -1,0 +1,243 @@
+<!-- app/templates/dashboard/dsds.html -->
+{% extends "base.html" %}
+{% block title %}DSDS - Tableau de bord{% endblock %}
+
+{% block styles %}
+<link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css" rel="stylesheet">
+<style>
+  .drive-header {
+    background: #f8f9fa;
+    border-bottom: 1px solid #dee2e6;
+    padding: 1rem 0;
+  }
+  .action-bar {
+    background: #fff;
+    border-bottom: 1px solid #dee2e6;
+    padding: 0.75rem 0;
+  }
+  .sidebar {
+    width: 280px;
+    background: #f8f9fa;
+    border-right: 1px solid #dee2e6;
+    height: calc(100vh - 120px);
+    overflow-y: auto;
+    padding: 1rem;
+  }
+  .sidebar .nav-link {
+    color: #5f6368;
+    padding: 0.5rem 1rem;
+    border-radius: 0.375rem;
+    margin-bottom: 0.25rem;
+  }
+  .sidebar .nav-link:hover, .sidebar .nav-link.active {
+    background: #e8f0fe;
+    color: #1a73e8;
+  }
+  .folder-item, .file-item {
+    padding: 0.75rem;
+    border-bottom: 1px solid #eee;
+  }
+  .folder-item:hover, .file-item:hover {
+    background: #f8f9fa;
+  }
+  .grid-view .folder-item, .grid-view .file-item {
+    border: none;
+    text-align: center;
+    padding: 1rem;
+  }
+  .grid-view i {
+    font-size: 2.5rem;
+    color: #1a73e8;
+  }
+</style>
+{% endblock %}
+
+{% block content %}
+<!-- HEADER -->
+<div class="drive-header">
+  <div class="container-fluid">
+    <div class="row align-items-center">
+      <div class="col-auto">
+        <h5 class="mb-0 text-primary">
+          <i class="bi bi-google me-2"></i> DSDS Drive
+        </h5>
+      </div>
+      <div class="col">
+        <div class="input-group">
+          <span class="input-group-text bg-white border-end-0">
+            <i class="bi bi-search"></i>
+          </span>
+          <input type="text" class="form-control border-start-0" placeholder="Rechercher dans DSDS Drive..." id="searchInput">
+        </div>
+      </div>
+      <div class="col-auto">
+        <div class="dropdown">
+          <button class="btn btn-outline-secondary dropdown-toggle" type="button" data-bs-toggle="dropdown">
+            <i class="bi bi-person-circle"></i> {{ current_user.name }}
+          </button>
+          <ul class="dropdown-menu dropdown-menu-end">
+            <li><a class="dropdown-item" href="{{ url_for('auth.logout') }}">
+              <i class="bi bi-box-arrow-right"></i> Déconnexion
+            </a></li>
+          </ul>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ACTION BAR -->
+<div class="action-bar">
+  <div class="container-fluid">
+    <div class="row align-items-center">
+      <div class="col-auto">
+        <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#newItemModal">
+          <i class="bi bi-plus-lg"></i> Nouveau
+        </button>
+      </div>
+      <div class="col text-end">
+        <div  <div class="btn-group" role="group">
+          <button type="button" class="btn btn-outline-secondary active" id="listViewBtn">
+            <i class="bi bi-list-ul"></i>
+          </button>
+          <button type="button" class="btn btn-outline-secondary" id="gridViewBtn">
+            <i class="bi bi-grid-3x3-gap"></i>
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="container-fluid mt-3">
+  <div class="row">
+    <!-- SIDEBAR -->
+    <div class="col-auto sidebar">
+      <nav class="nav flex-column">
+        <a class="nav-link active" href="#">
+          <i class="bi bi-house-door"></i> Mon Drive
+        </a>
+        <a class="nav-link" href="#">
+          <i class="bi bi-people"></i> DSDS Partagé
+        </a>
+        <a class="nav-link" href="#">
+          <i class="bi bi-clock-history"></i> Récent
+        </a>
+        <hr>
+        <a class="nav-link" href="#">
+          <i class="bi bi-trash"></i> Corbeille
+        </a>
+      </nav>
+
+      <hr>
+      <h6 class="text-muted">Organigramme</h6>
+      <div class="tree">
+        <ul class="list-unstyled ps-3">
+          <li><small><strong>DG</strong></small></li>
+          <li><small>→ DSDS (Vous)</small></li>
+          <li><small>→ Service Cartographie</small></li>
+          <li><small>→ Service État Civil</small></li>
+        </ul>
+      </div>
+    </div>
+
+    <!-- MAIN CONTENT -->
+    <div class="col">
+      <div id="contentArea">
+        <div id="listView">
+          <div class="folder-item d-flex justify-content-between align-items-center">
+            <div>
+              <i class="bi bi-folder-fill text-warning me-2"></i>
+              <strong>Rapports 2025</strong>
+            </div>
+            <small class="text-muted">12 oct.</small>
+          </div>
+          <div class="file-item d-flex justify-content-between align-items-center">
+            <div>
+              <i class="bi bi-file-earmark-text text-primary me-2"></i>
+              <span>Statistiques_Demographie.pdf</span>
+            </div>
+            <small class="text-muted">1.2 Mo</small>
+          </div>
+        </div>
+
+        <div id="gridView" class="row d-none">
+          <div class="col-3">
+            <div class="text-center p-3 bg-light rounded">
+              <i class="bi bi-folder-fill text-warning"></i>
+              <p class="mt-2 mb-0"><small>Rapports 2025</small></p>
+            </div>
+          </div>
+          <div class="col-3">
+            <div class="text-center p-3 bg-light rounded">
+              <i class="bi bi-file-earmark-pdf text-danger"></i>
+              <p class="mt-2 mb-0"><small>Statistiques.pdf</small></p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL NOUVEAU -->
+<div class="modal fade" id="newItemModal" tabindex="-1">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title">Nouveau</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body">
+        <div class="list-group">
+          <a href="#" class="list-group-item list-group-item-action">
+            <i class="bi bi-folder"></i> Dossier
+          </a>
+          <a href="#" class="list-group-item list-group-item-action" data-bs-toggle="modal" data-bs-target="#uploadModal">
+            <i class="bi bi-cloud-upload"></i> Importer un fichier
+          </a>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL UPLOAD -->
+<div class="modal fade" id="uploadModal" tabindex="-1">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <form>
+        <div class="modal-header">
+          <h5 class="modal-title">Importer un fichier</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+        </div>
+        <div class="modal-body">
+          <input type="file" class="form-control" multiple>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Annuler</button>
+          <button type="submit" class="btn btn-primary">Uploader</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+  document.getElementById('listViewBtn').addEventListener('click', function() {
+    document.getElementById('listView').classList.remove('d-none');
+    document.getElementById('gridView').classList.add('d-none');
+    this.classList.add('active');
+    document.getElementById('gridViewBtn').classList.remove('active');
+  });
+
+  document.getElementById('gridViewBtn').addEventListener('click', function() {
+    document.getElementById('gridView').classList.remove('d-none');
+    document.getElementById('listView').classList.add('d-none');
+    this.classList.add('active');
+    document.getElementById('listViewBtn').classList.remove('active');
+  });
+</script>
+{% endblock %}

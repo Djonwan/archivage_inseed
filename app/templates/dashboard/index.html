@@ -1,0 +1,28 @@
+<!-- app/templates/dashboard/index.html -->
+{% extends "base.html" %}
+{% block title %}Tableau de bord{% endblock %}
+
+{% block content %}
+<div class="container mt-5">
+  <div class="row">
+    <div class="col-md-12">
+      <div class="card">
+        <div class="card-header bg-primary text-white">
+          <h4>Bienvenue, {{ current_user.name }} !</h4>
+        </div>
+        <div class="card-body">
+          <p><strong>Rôle :</strong> {{ current_user.role }}</p>
+          <p><strong>Département :</strong> {{ current_user.department.name if current_user.department else 'Aucun' }}</p>
+          <p><strong>Dernière connexion :</strong> {{ current_user.last_login.strftime('%d/%m/%Y %H:%M') if current_user.last_login else 'Jamais' }}</p>
+          {% if current_user.role == 'dg' %}
+          <hr>
+          <a href="{{ url_for('admin.organigramme') }}" class="btn btn-outline-primary">
+            Voir l'organigramme
+          </a>
+          {% endif %}
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

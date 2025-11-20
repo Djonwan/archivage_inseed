@@ -1,0 +1,38 @@
+<!-- templates/admin/create_user.html -->
+{% extends "base.html" %}
+{% block title %}Créer un utilisateur{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+  <h2 class="mb-4">Créer un nouvel utilisateur</h2>
+  <div class="card shadow">
+    <div class="card-body">
+      <form method="POST" enctype="multipart/form-data">
+        <div class="mb-3">
+          <label>Nom complet</label>
+          <input type="text" name="name" class="form-control" required>
+        </div>
+        <div class="mb-3">
+          <label>Email</label>
+          <input type="email" name="email" class="form-control" required>
+        </div>
+        <div class="mb-3">
+          <label>Mot de passe</label>
+          <input type="password" name="password" class="form-control" required>
+        </div>
+        <div class="mb-3">
+          <label>Rôle</label>
+          <input type="text" name="role" class="form-control" required>
+        </div>
+        <div class="mb-3">
+          <label>Photo de profil</label>
+          <input type="file" name="profile_picture" class="form-control" accept="image/*">
+          <small class="text-muted">Laissez vide pour photo par défaut</small>
+        </div>
+        <button type="submit" class="btn btn-primary">Créer l'utilisateur</button>
+        <a href="{{ url_for('drive.home') }}" class="btn btn-secondary">Annuler</a>
+      </form>
+    </div>
+  </div>
+</div>
+{% endblock %}
