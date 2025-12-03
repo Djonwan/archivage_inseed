@@ -5,6 +5,7 @@ from flask_login import LoginManager
 from flask_mail import Mail
 from config import Config
 import os
+from flask_bcrypt import Bcrypt
 
 # === CRÉER LES OBJETS ===
 db = SQLAlchemy()
@@ -19,6 +20,10 @@ def create_app():
     app = Flask(__name__)
     app.config.from_object(Config)
 
+    # === AJOUT DE BCRYPT ===
+    bcrypt = Bcrypt(app)  # ← Ligne magique
+    app.bcrypt = bcrypt   # On l'attache à l'app pour accès global si besoin
+
     # === CRÉER LE DOSSIER UPLOADS À LA RACINE ===
     upload_folder = app.config['UPLOAD_FOLDER']
     print(f"Chemin d'upload configuré : {upload_folder}")
@@ -29,7 +34,7 @@ def create_app():
     else:
         print(f"Dossier déjà existant : {upload_folder}")
 
-    # === IMPORTER User AVANT TOUT ===
+    # === IMPORTER User ===
     from app.models.user import User
 
     # === INIT DB, LOGIN MANAGER ET MAIL ===
@@ -62,7 +67,7 @@ def create_app():
     def index():
         return redirect(url_for('auth.login'))
 
-    # === INJECTER user_can DANS JINJA (APRÈS BLUEPRINT) ===
+    # === INJECTER user_can DANS JINJA ===
     @app.context_processor
     def inject_user_can():
         from app.routes.drive import user_can
@@ -90,7 +95,7 @@ def create_app():
     @app.template_filter('endswith')
     def endswith_filter(value, suffix):
         return str(value).lower().endswith(suffix.lower()) if value else False
-
+    
 
     # === BLUEPRINTS ===
     from .routes.auth import auth_bp
@@ -104,3 +109,5 @@ def create_app():
     app.register_blueprint(drive_bp, url_prefix='/drive')
 
     return app
+
+

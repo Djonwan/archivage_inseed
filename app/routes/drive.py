@@ -19,10 +19,34 @@ from werkzeug.utils import secure_filename
 from sqlalchemy import or_, and_
 from sqlalchemy.orm import joinedload
 from app.utils.notifications import send_notification
+from sqlalchemy import delete, select
+from sqlalchemy import func
 
 drive_bp = Blueprint('drive', __name__, template_folder='templates/drive')
 
-# === FONCTIONS DE CONFIG DYNAMIQUE (pas de current_app au niveau module) ===
+
+# === FONCTIONS DE CONFIG DYNAMIQUE GESTION DE 404===
+@drive_bp.errorhandler(404)
+def handle_404(e):
+    # Si c'est une requête AJAX, on renvoie juste un code 404
+    if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+        return '', 404
+
+    # Sinon, on affiche un message propre
+    return """
+    <div class="container text-center py-5">
+      <i class="bi bi-folder-x display-1 text-danger"></i>
+      <h2 class="mt-4 text-muted">Contenu introuvable</h2>
+      <p class="lead text-muted">
+        Le dossier ou fichier que vous cherchez a été supprimé ou déplacé.
+      </p>
+      <a href="{{ url_for('drive.home') }}" class="btn btn-primary mt-3">
+        Retour à l'accueil
+      </a>
+    </div>
+    """, 404
+
+# === FONCTIONS DE CONFIG DYNAMIQUE===
 def get_upload_folder():
     return current_app.config['UPLOAD_FOLDER']
 
@@ -34,6 +58,7 @@ def get_max_file_size():
 
 def allowed_file(filename, allowed_extensions):
     return '.' in filename and filename.rsplit('.', 1)[1].lower() in allowed_extensions
+
 
 # === FONCTIONS UTILITAIRES ===
 def user_can(folder, permission):
@@ -94,6 +119,7 @@ def soft_delete_folder_recursive(folder):
     folder.deleted = True
     db.session.commit()
 
+
 # === ROUTES ===
 @drive_bp.route('/')
 @login_required
@@ -111,144 +137,526 @@ def home():
     return render_template('drive/home.html', folders=folders)
 
 
+# #route pour creer un dossier
+# @drive_bp.route('/create_folder', methods=['GET', 'POST'])
+# @login_required
+# def create_folder():
+#     if request.method == 'GET':
+#         all_users = User.query.filter(User.id != current_user.id).all()
+#         return render_template('drive/create_folder.html', all_users=all_users)
+
+#     name = request.form.get('name', '').strip()
+#     description = request.form.get('description', '').strip()
+#     if not name:
+#         return jsonify({"success": False, "error": "Nom requis"}), 400
+
+#     folder = Folder(name=name, description_folder=description, owner_id=current_user.id, is_personal=False)
+#     db.session.add(folder)
+#     db.session.flush()
+
+#     permissions_by_user = {}
+#     for key, value in request.form.items():
+#         if key.startswith('perm_') and value == 'on':
+#             parts = key.split('_')
+#             if len(parts) != 3: continue
+#             user_id, action = parts[1], parts[2]
+#             if user_id not in permissions_by_user:
+#                 permissions_by_user[user_id] = {k: False for k in ['can_read', 'can_edit', 'can_delete', 'can_download']}
+#             permissions_by_user[user_id][f'can_{action}'] = True
+
+#     notified_users = []
+#     for user_id, perms in permissions_by_user.items():
+#         perm = FolderPermission(folder_id=folder.id, user_id=user_id, **perms)
+#         db.session.add(perm)
+#         notified_users.append(User.query.get(int(user_id)))
+
+#     db.session.commit()
+#     log_activity(current_user, 'created', folder=folder)
+#     action = "créé un dossier"
+#     name = folder.name
+#     for perm in folder.permissions:
+#         if perm.user_id != current_user.id:
+#             send_notification(
+#                 user_id=perm.user_id,
+#                 title="Nouveau dossier partagé",
+#                 message=f"{current_user.name} a {action} : {name}",
+#                 url=url_for('drive.folder', folder_id=folder.id, _external=True)
+#             )
+
+#     for user in notified_users:
+#         url = url_for('drive.folder', folder_id=folder.id, _external=True)
+
+#         html_body = f"""
+#         <!DOCTYPE html>
+#         <html lang="fr">
+#         <head>
+#         <meta charset="UTF-8">
+#         <meta name="viewport" content="width=device-width, initial-scale=1.0">
+#         <title>Nouveau dossier partagé</title>
+#         </head>
+#         <body style="margin:0; padding:0; background:#f8f9fa; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;">
+#         <table width="100%" cellpadding="0" cellspacing="0" style="background:#f8f9fa; padding:40px 20px;">
+#             <tr>
+#             <td align="center">
+#                 <table width="100%" cellpadding="0" cellspacing="0" style="max-width:620px; background:#ffffff; border-radius:16px; overflow:hidden; box-shadow:0 10px 30px rgba(0,0,0,0.08);">
+#                 <!-- En-tête officiel -->
+#                 <tr>
+#                     <td style="background: linear-gradient(135deg, #0066cc, #003087); padding:30px 40px; text-align:center;">
+#                         <h1 style="color:#ffffff; margin:0; font-size:28px; font-weight:700;">
+#                             Archivage des données
+#                         </h1>
+#                         <p style="color:#e6f0ff; margin:10px 0 0; font-size:16px;">
+#                             Institut National de la Statistique, des Etudes Economiques et Démographiques
+#                         </p>
+
+#                         <!-- LOGO EN BAS SOUS LE TEXTE -->
+#                         <div style="margin-top:20px;" align="center">
+#                             <img src="https://www.inseed.td/images/2018/07/10/new-logonew.png"
+#                                 alt="Logo INSEED"
+#                                 width="110"
+#                                 style="display:block; border:0; outline:none; height:auto;"
+#                                 >
+#                         </div>
+
+
+
+#                     </td>
+#                 </tr>
+
+#                 <!-- Contenu -->
+#                 <tr>
+#                     <td style="padding:40px 40px 30px;">
+#                     <h2 style="color:#003087; margin-top:0; font-size:24px;">
+#                         Nouveau dossier partagé
+#                     </h2>
+                    
+#                     <p style="color:#333; font-size:16px; line-height:1.6;">
+#                         Bonjour <strong>{user.name.split()[0]}</strong>,
+#                     </p>
+                    
+#                     <p style="color:#333; font-size:16px; line-height:1.6;">
+#                         <strong>{current_user.name}</strong> vous a donné accès à un nouveau dossier :
+#                     </p>
+
+#                     <div style="background:#f0f7ff; border-left:6px solid #0066cc; padding:20px; border-radius:8px; margin:25px 0;">
+#                         <h3 style="color:#003087; margin:0 0 10px 0; font-size:20px;">
+#                         {folder.name}
+#                         </h3>
+#                         {f"<p style='color:#555; margin:5px 0;'><em>{folder.description_folder}</em></p>" if folder.description_folder else ""}
+#                     </div>
+
+#                     <div style="text-align:center; margin:35px 0;">
+#                         <a href="{url}" 
+#                         style="background:#0066cc; color:#ffffff; padding:16px 36px; text-decoration:none; border-radius:50px; font-weight:600; font-size:17px; display:inline-block; box-shadow:0 6px 15px rgba(0,102,204,0.3);">
+#                         Accéder au dossier
+#                         </a>
+#                     </div>
+
+#                     <hr style="border:none; border-top:1px solid #eee; margin:40px 0;">
+
+#                     <div style="text-align:center; color:#888; font-size:14px;">
+#                         <p style="margin:0;">
+#                         <strong>Ministère de Finance, du budget de l'economie, du plan et de la cooperation internationale</strong><br>
+#                         République du Tchad — Unité • Travail • Progrès
+#                         </p>
+#                         <p style="margin:10px 0 0; font-size:13px; color:#aaa;">
+#                         Cet email a été envoyé automatiquement • <a href="https://inseed.td" style="color:#0066cc;">inseed.td</a>
+#                         </p>
+#                     </div>
+#                     </td>
+#                 </tr>
+#                 </table>
+
+#                 <div style="margin-top:30px; color:#aaa; font-size:12px;">
+#                 © 2025 Archivage INSEED — Tous droits réservés
+#                 </div>
+#             </td>
+#             </tr>
+#         </table>
+#         </body>
+#         </html>
+#         """
+
+#         msg = Message(
+#             subject=f"Nouveau dossier partagé : {folder.name}",
+#             recipients=[user.email],
+#             sender="Portail DSDS <djongwangpaklam@gmail.com>",
+#             html=html_body
+#         )
+#         mail.send(msg)
+
+   
+
+
+#     return jsonify({"success": True, "message": f"Dossier '{folder.name}' créé !", "folder_id": folder.id})
+
+
+# # route pour créer un dossier (racine)
+# @drive_bp.route('/create_folder', methods=['GET', 'POST'])
+# @login_required
+# def create_folder():
+#     if request.method == 'GET':
+#         # On exclut le créateur + tous les super_admin de la liste partageable
+#         all_users = User.query.filter(
+#             User.id != current_user.id,
+#             User.role != 'super_admin'
+#         ).all()
+#         return render_template('drive/create_folder.html', all_users=all_users)
+
+#     name = request.form.get('name', '').strip()
+#     description = request.form.get('description', '').strip()
+#     is_personal = request.form.get('is_personal') == 'on'  # depuis le hidden input
+
+#     if not name:
+#         return jsonify({"success": False, "error": "Le nom du dossier est requis"}), 400
+
+#     # Création du dossier
+#     folder = Folder(
+#         name=name,
+#         description_folder=description or None,
+#         owner_id=current_user.id,
+#         is_personal=is_personal,
+#         parent_id=None
+#     )
+#     db.session.add(folder)
+#     db.session.flush()  # pour avoir folder.id
+
+#     message = ""
+#     notified_users = []
+
+#     if is_personal:
+#         # === DOSSIER PERSONNEL : rien à partager ===
+#         message = f"Dossier personnel « {folder.name} » créé avec succès !"
+#         action_log = "créé un dossier personnel"
+
+#     else:
+#         # === DOSSIER PARTAGÉ : on traite les permissions ===
+#         permissions_by_user = {}
+#         for key, value in request.form.items():
+#             if key.startswith('perm_') and value == 'on':
+#                 parts = key.split('_')
+#                 if len(parts) != 3:
+#                     continue
+#                 user_id, action = parts[1], parts[2]
+#                 user_id = int(user_id)
+
+#                 # Sécurité : on ignore si c'est un super_admin ou l'utilisateur lui-même (déjà propriétaire)
+#                 user = User.query.get(user_id)
+#                 if not user or user.role == 'super_admin' or user.id == current_user.id:
+#                     continue
+
+#                 if user_id not in permissions_by_user:
+#                     permissions_by_user[user_id] = {
+#                         'can_read': False, 'can_edit': False,
+#                         'can_delete': False, 'can_download': False
+#                     }
+#                 permissions_by_user[user_id][f'can_{action}'] = True
+
+#         # Enregistrement des permissions
+#         for user_id, perms in permissions_by_user.items():
+#             perm = FolderPermission(folder_id=folder.id, user_id=user_id, **perms)
+#             db.session.add(perm)
+#             notified_users.append(User.query.get(user_id))
+
+#         action_log = "créé et partagé un dossier"
+#         message = f"Dossier « {folder.name} » créé et partagé avec succès !"
+
+#     # Commit final
+#     db.session.commit()
+#     log_activity(current_user, 'created', folder=folder)
+
+#     # === NOTIFICATIONS + EMAIL (uniquement si partagé) ===
+#     if not is_personal and notified_users:
+#         folder_url = url_for('drive.folder', folder_id=folder.id, _external=True)
+
+#         for user in notified_users:
+#             # Notification dans l'app (cloche)
+#             send_notification(
+#                 user_id=user.id,
+#                 title="Nouveau dossier partagé",
+#                 message=f"{current_user.name} vous a partagé le dossier « {folder.name} »",
+#                 url=folder_url
+#             )
+
+#             # Email magnifique INSEED
+#             html_body = f"""
+#             <!DOCTYPE html>
+#             <html lang="fr">
+#             <head>
+#             <meta charset="UTF-8">
+#             <meta name="viewport" content="width=device-width, initial-scale=1.0">
+#             <title>Nouveau dossier partagé</title>
+#             </head>
+#             <body style="margin:0; padding:0; background:#f8f9fa; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;">
+#             <table width="100%" cellpadding="0" cellspacing="0" style="background:#f8f9fa; padding:40px 20px;">
+#                 <tr>
+#                 <td align="center">
+#                     <table width="100%" cellpadding="0" cellspacing="0" style="max-width:620px; background:#ffffff; border-radius:16px; overflow:hidden; box-shadow:0 10px 30px rgba(0,0,0,0.08);">
+#                     <tr>
+#                         <td style="background: linear-gradient(135deg, #0066cc, #003087); padding:30px 40px; text-align:center;">
+#                             <h1 style="color:#ffffff; margin:0; font-size:28px; font-weight:700;">
+#                                 Archivage des données
+#                             </h1>
+#                             <p style="color:#e6f0ff; margin:10px 0 0; font-size:16px;">
+#                                 Institut National de la Statistique, des Etudes Economiques et Démographiques
+#                             </p>
+#                             <div style="margin-top:20px;" align="center">
+#                                 <img src="https://www.inseed.td/images/2018/07/10/new-logonew.png"
+#                                     alt="Logo INSEED" width="110" style="display:block; border:0; height:auto;">
+#                             </div>
+#                         </td>
+#                     </tr>
+#                     <tr>
+#                         <td style="padding:40px 40px 30px;">
+#                         <h2 style="color:#003087; margin-top:0; font-size:24px;">Nouveau dossier partagé</h2>
+#                         <p style="color:#333; font-size:16px; line-height:1.6;">
+#                             Bonjour <strong>{user.name.split()[0] if user.name else 'collègue'}</strong>,
+#                         </p>
+#                         <p style="color:#333; font-size:16px; line-height:1.6;">
+#                             <strong>{current_user.name}</strong> vous a donné accès à un nouveau dossier :
+#                         </p>
+#                         <div style="background:#f0f7ff; border-left:6px solid #0066cc; padding:20px; border-radius:8px; margin:25px 0;">
+#                             <h3 style="color:#003087; margin:0 0 10px 0; font-size:20px;">{folder.name}</h3>
+#                             {f"<p style='color:#555; margin:5px 0;'><em>{folder.description_folder}</em></p>" if folder.description_folder else ""}
+#                         </div>
+#                         <div style="text-align:center; margin:35px 0;">
+#                             <a href="{folder_url}" 
+#                                style="background:#0066cc; color:#ffffff; padding:16px 36px; text-decoration:none; border-radius:50px; font-weight:600; font-size:17px; display:inline-block; box-shadow:0 6px 15px rgba(0,102,204,0.3);">
+#                                Accéder au dossier
+#                             </a>
+#                         </div>
+#                         <hr style="border:none; border-top:1px solid #eee; margin:40px 0;">
+#                         <div style="text-align:center; color:#888; font-size:14px;">
+#                             <p style="margin:0;">
+#                             <strong>Ministère de Finance, du budget de l'économie, du plan et de la coopération internationale</strong><br>
+#                             République du Tchad — Unité • Travail • Progrès
+#                             </p>
+#                         </div>
+#                         </td>
+#                     </tr>
+#                     </table>
+#                     <div style="margin-top:30px; color:#aaa; font-size:12px; text-align:center;">
+#                     © 2025 Archivage INSEED — Tous droits réservés
+#                     </div>
+#                 </td>
+#                 </tr>
+#             </table>
+#             </body>
+#             </html>
+#             """
+
+#             msg = Message(
+#                 subject=f"Nouveau dossier partagé : {folder.name}",
+#                 recipients=[user.email],
+#                 sender="Portail DSDS <djongwangpaklam@gmail.com>",
+#                 html=html_body
+#             )
+#             try:
+#                 mail.send(msg)
+#             except:
+#                 pass  # on ne bloque pas si l'email échoue
+
+#     return jsonify({
+#         "success": True,
+#         "message": message,
+#         "folder_id": folder.id,
+#         "is_personal": is_personal
+#     })
+
 
 @drive_bp.route('/create_folder', methods=['GET', 'POST'])
 @login_required
 def create_folder():
     if request.method == 'GET':
-        all_users = User.query.filter(User.id != current_user.id).all()
+        # On exclut : le créateur + tous les super_admin → ils n'ont pas besoin d'être dans la liste
+        all_users = User.query.filter(
+            User.id != current_user.id,
+            User.role != 'super_admin'
+        ).order_by(User.name).all()
         return render_template('drive/create_folder.html', all_users=all_users)
 
     name = request.form.get('name', '').strip()
     description = request.form.get('description', '').strip()
-    if not name:
-        return jsonify({"success": False, "error": "Nom requis"}), 400
+    is_personal = request.form.get('is_personal') == 'on'
 
-    folder = Folder(name=name, description_folder=description, owner_id=current_user.id, is_personal=False)
+    if not name:
+        return jsonify({"success": False, "error": "Le nom du dossier est requis"}), 400
+
+    # Création du dossier
+    folder = Folder(
+        name=name,
+        description_folder=description or None,
+        owner_id=current_user.id,
+        is_personal=is_personal,
+        parent_id=None
+    )
     db.session.add(folder)
     db.session.flush()
 
-    permissions_by_user = {}
-    for key, value in request.form.items():
-        if key.startswith('perm_') and value == 'on':
-            parts = key.split('_')
-            if len(parts) != 3: continue
-            user_id, action = parts[1], parts[2]
-            if user_id not in permissions_by_user:
-                permissions_by_user[user_id] = {k: False for k in ['can_read', 'can_edit', 'can_delete', 'can_download']}
-            permissions_by_user[user_id][f'can_{action}'] = True
-
     notified_users = []
-    for user_id, perms in permissions_by_user.items():
-        perm = FolderPermission(folder_id=folder.id, user_id=user_id, **perms)
-        db.session.add(perm)
-        notified_users.append(User.query.get(int(user_id)))
 
+    if not is_personal:
+        # === DOSSIER PARTAGÉ : on traite les permissions normalement ===
+        permissions_by_user = {}
+        for key, value in request.form.items():
+            if key.startswith('perm_') and value == 'on':
+                parts = key.split('_')
+                if len(parts) != 3:
+                    continue
+                user_id_str, action = parts[1], parts[2]
+                try:
+                    user_id = int(user_id_str)
+                except:
+                    continue
+
+                # On ignore si c'est le propriétaire ou un super_admin
+                if user_id == current_user.id:
+                    continue
+                user = User.query.get(user_id)
+                if not user or user.role == 'super_admin':
+                    continue
+
+                if user_id not in permissions_by_user:
+                    permissions_by_user[user_id] = {
+                        'can_read': False, 'can_edit': False,
+                        'can_delete': False, 'can_download': False
+                    }
+                permissions_by_user[user_id][f'can_{action}'] = True
+
+        # Enregistrement des permissions pour les utilisateurs normaux
+        for user_id, perms in permissions_by_user.items():
+            perm = FolderPermission(folder_id=folder.id, user_id=user_id, **perms)
+            db.session.add(perm)
+            notified_users.append(User.query.get(user_id))
+
+        message = f"Dossier « {folder.name} » créé et partagé avec succès !"
+    else:
+        # === DOSSIER PERSONNEL : AUCUN partage normal ===
+        message = f"Dossier personnel « {folder.name} » créé avec succès !"
+
+    # === SUPER ADMIN : ACCÈS TOTAL AUTOMATIQUE (même sur les dossiers personnels) ===
+    super_admins = User.query.filter_by(role='super_admin').all()
+    for sa in super_admins:
+        # On vérifie qu'il n'a pas déjà une permission (au cas où)
+        existing = FolderPermission.query.filter_by(folder_id=folder.id, user_id=sa.id).first()
+        if not existing:
+            full_perm = FolderPermission(
+                folder_id=folder.id,
+                user_id=sa.id,
+                can_read=True,
+                can_edit=True,
+                can_delete=True,
+                can_download=True
+            )
+            db.session.add(full_perm)
+
+    # Commit final
     db.session.commit()
     log_activity(current_user, 'created', folder=folder)
-    action = "créé un dossier"
-    name = folder.name
-    for perm in folder.permissions:
-        if perm.user_id != current_user.id:
-            send_notification(
-                user_id=perm.user_id,
-                title="Nouveau dossier partagé",
-                message=f"{current_user.name} a {action} : {name}",
-                url=url_for('drive.folder', folder_id=folder.id, _external=True)
-            )
 
-    # for user in notified_users:
-    #     msg = Message(
-    #         subject=f"Nouveau dossier partagé : {folder.name}",
-    #         recipients=[user.email],
-    #         body=f"""
-    #         Bonjour {user.name},
+    # === ENVOI NOTIFICATIONS + EMAIL (uniquement si partagé) ===
+    # === NOTIFICATIONS + EMAIL (super admin TOUJOURS notifié) ===
+    folder_url = url_for('drive.folder', folder_id=folder.id, _external=True)
 
-    #         {current_user.name} a créé un nouveau dossier et vous y a donné accès :
+    # Liste des utilisateurs à notifier (ceux qui ont reçu des droits + TOUS les super_admins)
+    users_to_notify = set(notified_users)
 
-    #         → **{folder.name}**
+    # On ajoute TOUS les super_admins (même si dossier personnel)
+    super_admins = User.query.filter_by(role='super_admin').all()
+    for sa in super_admins:
+        users_to_notify.add(sa)
 
-    #         Lien : {url_for('drive.folder', folder_id=folder.id, _external=True)}
+    # Envoi des notifications + emails
+    for user in users_to_notify:
+        # === Notification dans l'app (cloche) ===
+        send_notification(
+            user_id=user.id,
+            title="Nouveau dossier créé",
+            message=f"{current_user.name} a créé le dossier « {folder.name} »"
+                    f"{' (personnel)' if is_personal else ''}",
+            url=folder_url
+        )
 
-    #         Cordialement,
-    #         Portail DSDS
-    #         """
-    #     )
-    #     mail.send(msg)
-
-    for user in notified_users:
-        url = url_for('drive.folder', folder_id=folder.id, _external=True)
+        # === Email magnifique INSEED ===
+        # Message adapté selon le type de dossier et le destinataire
+        if user.role == 'super_admin':
+            titre_email = "Nouveau dossier créé dans le système"
+            intro = f"L'utilisateur <strong>{current_user.name}</strong> a créé un nouveau dossier dans le système :"
+            type_dossier = "DOSSIER PERSONNEL" if is_personal else "DOSSIER PARTAGÉ"
+            couleur_bande = "#d4edda" if is_personal else "#f0f7ff"
+            texte_bande = "Ce dossier est privé — seul le propriétaire et les super administrateurs y ont accès." if is_personal else "Ce dossier a été partagé avec certains utilisateurs."
+        else:
+            titre_email = "Nouveau dossier partagé"
+            intro = f"<strong>{current_user.name}</strong> vous a donné accès à un nouveau dossier :"
+            type_dossier = ""
+            couleur_bande = "#f0f7ff"
+            texte_bande = ""
 
         html_body = f"""
         <!DOCTYPE html>
         <html lang="fr">
         <head>
-        <meta charset="UTF-8">
-        <meta name="viewport" content="width=device-width, initial-scale=1.0">
-        <title>Nouveau dossier partagé</title>
+            <meta charset="UTF-8">
+            <meta name="viewport" content="width=device-width, initial-scale=1.0">
+            <title>{titre_email}</title>
         </head>
         <body style="margin:0; padding:0; background:#f8f9fa; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;">
         <table width="100%" cellpadding="0" cellspacing="0" style="background:#f8f9fa; padding:40px 20px;">
             <tr>
             <td align="center">
                 <table width="100%" cellpadding="0" cellspacing="0" style="max-width:620px; background:#ffffff; border-radius:16px; overflow:hidden; box-shadow:0 10px 30px rgba(0,0,0,0.08);">
-                <!-- En-tête officiel -->
+                <!-- En-tête -->
                 <tr>
                     <td style="background: linear-gradient(135deg, #0066cc, #003087); padding:30px 40px; text-align:center;">
-                    <h1 style="color:#ffffff; margin:0; font-size:28px; font-weight:700;">
-                        Archivage des données
-                    </h1>
-                    <p style="color:#e6f0ff; margin:10px 0 0; font-size:16px;">
-                        Institut National de la Statistique des Etudes Economiques et Demographique
-                    </p>
+                        <h1 style="color:#ffffff; margin:0; font-size:28px; font-weight:700;">
+                            Archivage des données
+                        </h1>
+                        <p style="color:#e6f0ff; margin:10px 0 0; font-size:16px;">
+                            Institut National de la Statistique, des Etudes Economiques et Démographiques
+                        </p>
+                        <div style="margin-top:20px;" align="center">
+                            <img src="https://www.inseed.td/images/2018/07/10/new-logonew.png"
+                                alt="Logo INSEED" width="110" style="display:block; border:0; height:auto;">
+                        </div>
                     </td>
                 </tr>
-
                 <!-- Contenu -->
                 <tr>
                     <td style="padding:40px 40px 30px;">
-                    <h2 style="color:#003087; margin-top:0; font-size:24px;">
-                        Nouveau dossier partagé
-                    </h2>
-                    
+                    <h2 style="color:#003087; margin-top:0; font-size:24px;">{titre_email}</h2>
                     <p style="color:#333; font-size:16px; line-height:1.6;">
-                        Bonjour <strong>{user.name.split()[0]}</strong>,
+                        Bonjour <strong>{user.name.split()[0] if user.name else 'collègue'}</strong>,
                     </p>
-                    
                     <p style="color:#333; font-size:16px; line-height:1.6;">
-                        <strong>{current_user.name}</strong> vous a donné accès à un nouveau dossier :
+                        {intro}
                     </p>
 
-                    <div style="background:#f0f7ff; border-left:6px solid #0066cc; padding:20px; border-radius:8px; margin:25px 0;">
+                    <div style="background:{couleur_bande}; border-left:6px solid #0066cc; padding:20px; border-radius:8px; margin:25px 0;">
                         <h3 style="color:#003087; margin:0 0 10px 0; font-size:20px;">
-                        {folder.name}
+                            {folder.name} {f"<span style='background:#28a745;color:white;padding:4px 10px;border-radius:20px;font-size:12px;'>{type_dossier}</span>" if type_dossier else ""}
                         </h3>
                         {f"<p style='color:#555; margin:5px 0;'><em>{folder.description_folder}</em></p>" if folder.description_folder else ""}
+                        {f"<p style='color:#666; margin:10px 0 0; font-size:14px;'><strong>Note :</strong> {texte_bande}</p>" if texte_bande else ""}
                     </div>
 
                     <div style="text-align:center; margin:35px 0;">
-                        <a href="{url}" 
+                        <a href="{folder_url}" 
                         style="background:#0066cc; color:#ffffff; padding:16px 36px; text-decoration:none; border-radius:50px; font-weight:600; font-size:17px; display:inline-block; box-shadow:0 6px 15px rgba(0,102,204,0.3);">
                         Accéder au dossier
                         </a>
                     </div>
 
                     <hr style="border:none; border-top:1px solid #eee; margin:40px 0;">
-
                     <div style="text-align:center; color:#888; font-size:14px;">
                         <p style="margin:0;">
-                        <strong>Ministère de Finance, du budget de l'economie, du plan et de la cooperation internationale</strong><br>
+                        <strong>Ministère de Finance, du budget de l'économie, du plan et de la coopération internationale</strong><br>
                         République du Tchad — Unité • Travail • Progrès
-                        </p>
-                        <p style="margin:10px 0 0; font-size:13px; color:#aaa;">
-                        Cet email a été envoyé automatiquement • <a href="https://inseed.td" style="color:#0066cc;">inseed.td</a>
                         </p>
                     </div>
                     </td>
                 </tr>
                 </table>
-
-                <div style="margin-top:30px; color:#aaa; font-size:12px;">
+                <div style="margin-top:30px; color:#aaa; font-size:12px; text-align:center;">
                 © 2025 Archivage INSEED — Tous droits réservés
                 </div>
             </td>
@@ -259,24 +667,55 @@ def create_folder():
         """
 
         msg = Message(
-            subject=f"Nouveau dossier partagé : {folder.name}",
+            subject=f"{'[Supervision] ' if user.role == 'super_admin' else ''}Nouveau dossier : {folder.name}",
             recipients=[user.email],
             sender="Portail DSDS <djongwangpaklam@gmail.com>",
             html=html_body
         )
-        mail.send(msg)
+        try:
+            mail.send(msg)
+        except:
+            pass  # jamais de crash
 
-   
-
-
-    return jsonify({"success": True, "message": f"Dossier '{folder.name}' créé !", "folder_id": folder.id})
-
-
+        
 
 
+
+
+
+        return jsonify({
+            "success": True,
+            "message": message,
+            "folder_id": folder.id
+        })
+
+
+
+
+#route pour le menu mon espace
+# @drive_bp.route('/explore')
+# @login_required
+# def explore():
+#     shared_folder_ids = db.session.query(FolderPermission.folder_id).filter(
+#         FolderPermission.user_id == current_user.id,
+#         FolderPermission.can_read == True
+#     ).subquery()
+
+#     folders = Folder.query.filter(
+#         Folder.parent_id.is_(None),
+#         Folder.deleted == False,
+#         or_(Folder.owner_id == current_user.id, Folder.id.in_(shared_folder_ids))
+#     ).order_by(Folder.created_at.desc()).all()
+
+#     return render_template('drive/explore.html', folders=folders)
+
+
+
+# route pour le menu "Exploration"
 @drive_bp.route('/explore')
 @login_required
 def explore():
+    # Tous les dossiers accessibles (propres + partagés)
     shared_folder_ids = db.session.query(FolderPermission.folder_id).filter(
         FolderPermission.user_id == current_user.id,
         FolderPermission.can_read == True
@@ -285,11 +724,17 @@ def explore():
     folders = Folder.query.filter(
         Folder.parent_id.is_(None),
         Folder.deleted == False,
-        or_(Folder.owner_id == current_user.id, Folder.id.in_(shared_folder_ids))
+        or_(
+            Folder.owner_id == current_user.id,  # ses propres dossiers (personnels ou pas)
+            Folder.id.in_(shared_folder_ids)     # ceux partagés avec lui
+        )
     ).order_by(Folder.created_at.desc()).all()
 
     return render_template('drive/explore.html', folders=folders)
 
+
+
+#route pour ouvrir un dossier
 @drive_bp.route('/folder/<int:folder_id>')
 @login_required
 def folder(folder_id):
@@ -315,71 +760,7 @@ def folder(folder_id):
     return render_template('drive/folder_view.html', folder=folder, subfolders=subfolders, files=files, breadcrumb=breadcrumb)
 
 
-# @drive_bp.route('/folder/<int:folder_id>/create_subfolder', methods=['GET', 'POST'])
-# @login_required
-# def create_subfolder(folder_id):
-#     parent = Folder.query.get_or_404(folder_id)
-#     if not user_can(parent, 'edit'):
-#         flash("Vous n'avez pas la permission de créer un sous-dossier.", "danger")
-#         return redirect(url_for('drive.folder', folder_id=folder_id))
-
-#     if request.method == 'GET':
-#         accessible_user_ids = [p.user_id for p in parent.permissions]
-#         if parent.owner_id != current_user.id:
-#             accessible_user_ids.append(current_user.id)
-#         users = User.query.filter(User.id.in_(accessible_user_ids)).all()
-#         return render_template('drive/create_subfolder.html', parent_folder=parent, users_with_access=users)
-
-#     name = request.form.get('name', '').strip()
-#     description = request.form.get('description', '').strip()
-#     if not name:
-#         return jsonify({"success": False, "error": "Nom requis"}), 400
-
-#     subfolder = Folder(name=name, description_folder=description, parent_id=parent.id, owner_id=current_user.id, is_personal=False)
-#     db.session.add(subfolder)
-#     db.session.flush()
-
-#     permissions_by_user = {}
-#     for key, value in request.form.items():
-#         if key.startswith('perm_') and value == 'on':
-#             parts = key.split('_')
-#             if len(parts) != 3: continue
-#             user_id, action = parts[1], parts[2]
-#             if user_id not in permissions_by_user:
-#                 permissions_by_user[user_id] = {k: False for k in ['can_read', 'can_edit', 'can_delete', 'can_download']}
-#             permissions_by_user[user_id][f'can_{action}'] = True
-
-#     notified_users = []
-#     for user_id, perms in permissions_by_user.items():
-#         perm = FolderPermission(folder_id=subfolder.id, user_id=user_id, **perms)
-#         db.session.add(perm)
-#         notified_users.append(User.query.get(int(user_id)))
-
-#     db.session.commit()
-#     log_activity(current_user, 'created', folder=subfolder)
-    
-#     for user in notified_users:
-#         msg = Message(
-#             subject=f"Sous-dossier partagé : {subfolder.name}",
-#             recipients=[user.email],
-#             body=f"""
-#             Bonjour {user.name},
-
-#             {current_user.name} a créé un **sous-dossier** dans **{parent.name}** :
-
-#             → **{subfolder.name}**
-
-#             Lien : {url_for('drive.folder', folder_id=subfolder.id, _external=True)}
-
-#             Cordialement,
-#             Portail DSDS
-#             """
-#         )
-#         mail.send(msg)
-
-#     return jsonify({"success": True, "message": f"Sous-dossier '{subfolder.name}' créé !", "folder_id": subfolder.id})
-
-
+#route pour creer un sous dossier
 @drive_bp.route('/folder/<int:folder_id>/create_subfolder', methods=['GET', 'POST'])
 @login_required
 def create_subfolder(folder_id):
@@ -410,7 +791,7 @@ def create_subfolder(folder_id):
     db.session.add(subfolder)
     db.session.flush()
 
-    # === Gestion des nouvelles permissions (comme avant) ===
+    # === Gestion des nouvelles permissions ===
     permissions_by_user = {}
     for key, value in request.form.items():
         if key.startswith('perm_') and value == 'on':
@@ -455,24 +836,6 @@ def create_subfolder(folder_id):
             url=subfolder_url
         )
 
-        # === Email (conservé) ===
-        msg = Message(
-            subject=f"Nouveau sous-dossier : {subfolder.name}",
-            recipients=[user.email],
-            body=f"""
-            Bonjour {user.name},
-
-            {current_user.name} a créé un **sous-dossier** dans le dossier partagé **{parent.name}** :
-
-            → **{subfolder.name}**
-
-            Accédez-y ici : {subfolder_url}
-
-            Cordialement,
-            Portail DSDS
-            """
-        )
-        mail.send(msg)
 
     return jsonify({
         "success": True,
@@ -482,8 +845,7 @@ def create_subfolder(folder_id):
 
 
 
-
-
+#route pour renommer un dossier
 @drive_bp.route('/folder/<int:folder_id>/rename', methods=['POST'])
 @login_required
 def rename_folder_action(folder_id):
@@ -519,7 +881,7 @@ def rename_folder_action(folder_id):
 
 
 
-
+#route pour supprimer un dossier
 @drive_bp.route('/folder/<int:folder_id>/delete', methods=['POST'])
 @login_required
 def delete_folder(folder_id):
@@ -533,6 +895,7 @@ def delete_folder(folder_id):
     flash(f"Dossier '{folder.name}' et son contenu envoyés à la corbeille.", "info")
     return redirect(url_for('drive.explore') if not folder.parent_id else url_for('drive.folder', folder_id=folder.parent_id))
 
+#route pour telecharger un dossier
 @drive_bp.route('/folder/<int:folder_id>/download')
 @login_required
 def download_folder(folder_id):
@@ -554,6 +917,8 @@ def download_folder(folder_id):
         mimetype='application/zip'
     )
 
+
+#route pour ajouter un fichier
 @drive_bp.route('/folder/<int:folder_id>/upload', methods=['POST'])
 @login_required
 def upload_file(folder_id):
@@ -621,7 +986,7 @@ def upload_file(folder_id):
     return redirect(url_for('drive.folder', folder_id=folder.id))
 
 
-
+#route pour telecharger un fichier
 @drive_bp.route('/file/<int:file_id>/download')
 @login_required
 def download_file(file_id):
@@ -680,7 +1045,7 @@ def rename_file(file_id):
 
 
 
-
+#route pour supprimer un fichier
 @drive_bp.route('/file/<int:file_id>/delete', methods=['POST'])
 @login_required
 def delete_file(file_id):
@@ -695,6 +1060,9 @@ def delete_file(file_id):
     flash(f"'{file.original_name}' envoyé à la corbeille.", "info")
     return redirect(url_for('drive.folder', folder_id=file.folder_id))
 
+
+
+#route pour mettre en favorie un fichier
 @drive_bp.route('/file/<int:file_id>/favorite', methods=['POST'])
 @login_required
 def toggle_favorite(file_id):
@@ -715,6 +1083,7 @@ def toggle_favorite(file_id):
 
     return redirect(url_for('drive.folder', folder_id=file.folder_id))
 
+#route pour afficher les fichiers en favorites
 @drive_bp.route('/favorites')
 @login_required
 def favorites():
@@ -723,7 +1092,9 @@ def favorites():
 
 
 
+#=============BLOC DE CODE DE SUPPRESSION DEFINITF DE DOSSIER ET FICHIER======================
 
+#fonction utlitaire pour supprimer un dossier avec ces elements
 def delete_folder_and_contents(folder):
     # Fichiers
     for file in folder.files:
@@ -743,9 +1114,7 @@ def delete_folder_and_contents(folder):
     db.session.delete(folder)
 
 
-
-#Bloc de code de suppression definitive des dossiers
-
+#route de corbeille
 @drive_bp.route('/trash')
 @login_required
 def trash():
@@ -754,6 +1123,7 @@ def trash():
     return render_template('drive/trash.html', files=files, folders=folders)
 
 
+#route de suppression definitif de dossier
 @drive_bp.route('/trash/delete_folder/<int:folder_id>', methods=['POST'])
 @login_required
 def permanent_delete_folder(folder_id):
@@ -769,7 +1139,6 @@ def permanent_delete_folder(folder_id):
 
     delete_folder_and_contents(folder)
 
-    # AJOUTE CETTE LIGNE (C’EST TOUT !)
     db.session.commit()
 
     flash(f"Le dossier « {folder.name} » et tout son contenu ont été supprimés définitivement.", "success")
@@ -777,27 +1146,29 @@ def permanent_delete_folder(folder_id):
 
 
 
+#route de suppression definitif de fichier
 @drive_bp.route('/trash/delete_file/<int:file_id>', methods=['POST'])
 @login_required
 def permanent_delete_file(file_id):
     file = File.query.get_or_404(file_id)
 
-    if file.owner_id != current_user.id:
-        flash("Vous ne pouvez pas supprimer définitivement ce fichier.", "danger")
+    if file.owner_id != current_user.id and not current_user.is_super_admin():
+        flash("Vous n'avez pas le droit de supprimer définitivement ce fichier.", "danger")
         return redirect(url_for('drive.trash'))
 
     if not file.deleted:
         flash("Ce fichier n'est pas dans la corbeille.", "warning")
         return redirect(url_for('drive.trash'))
 
-    # LE CHEMIN EST DANS file.filename
+    # Suppression du fichier physique
     full_path = os.path.join(current_app.config['UPLOAD_FOLDER'], file.filename)
     if os.path.exists(full_path):
         try:
             os.remove(full_path)
-        except:
-            pass  # ignore si déjà supprimé
+        except Exception as e:
+            print(f"Erreur suppression physique: {e}")
 
+    # Suppression définitive → CASCADE supprime automatiquement les favoris
     db.session.delete(file)
     db.session.commit()
 
@@ -806,8 +1177,7 @@ def permanent_delete_file(file_id):
 
 
 
-
-
+#route de restauration de fichier dans le corbeille
 @drive_bp.route('/file/<int:file_id>/restore', methods=['POST'])
 @login_required
 def restore_file(file_id):
@@ -820,6 +1190,7 @@ def restore_file(file_id):
     flash(f"'{file.original_name}' restauré.", "success")
     return redirect(url_for('drive.trash'))
 
+#route de restauration de dossier du corbeille
 @drive_bp.route('/folder/<int:folder_id>/restore', methods=['POST'])
 @login_required
 def restore_folder(folder_id):
@@ -833,8 +1204,7 @@ def restore_folder(folder_id):
     return redirect(url_for('drive.trash'))
 
 
-from sqlalchemy import delete, select
-
+#route de vider le corbeille
 @drive_bp.route('/trash/empty', methods=['POST'])
 @login_required
 def empty_trash():
@@ -871,50 +1241,7 @@ def empty_trash():
     return redirect(url_for('drive.trash'))
 
 
-
-
-# @drive_bp.route('/recent')
-# @login_required
-# def recent():
-#     since = datetime.utcnow() - timedelta(hours=72)
-
-#     # === Dossiers accessibles (propres + partagés) ===
-#     shared_folder_ids = db.session.query(FolderPermission.folder_id).filter(
-#         FolderPermission.user_id == current_user.id,
-#         FolderPermission.can_read == True
-#     ).subquery()
-
-#     accessible_folder_ids = db.session.query(Folder.id).filter(
-#         or_(Folder.owner_id == current_user.id, Folder.id.in_(shared_folder_ids))
-#     ).subquery()
-
-#     # === Créations / Uploads (dans dossiers accessibles) ===
-#     creations = Activity.query.join(File, Activity.file_id == File.id, isouter=True)\
-#         .join(Folder, File.folder_id == Folder.id, isouter=True)\
-#         .filter(
-#             Activity.timestamp >= since,
-#             Activity.action.in_(['created', 'uploaded']),
-#             Folder.id.in_(accessible_folder_ids)
-#         )
-
-#     # === Actions utilisateur (ouvert, téléchargé, renommé, supprimé) ===
-#     user_actions = Activity.query.filter(
-#         Activity.user_id == current_user.id,
-#         Activity.timestamp >= since,
-#         Activity.action.in_(['opened', 'downloaded', 'renamed', 'deleted'])
-#     )
-
-#     # === Union + tri ===
-#     activities = creations.union(user_actions).order_by(Activity.timestamp.desc()).options(
-#         joinedload(Activity.file),
-#         joinedload(Activity.folder),
-#         joinedload(Activity.user)
-#     ).all()
-
-#     return render_template('drive/recent.html', activities=activities)
-
-
-
+#route de voir ces activites rescents
 @drive_bp.route('/recent')
 @login_required
 def recent():
@@ -954,9 +1281,7 @@ def recent():
 
 
 
-
-
-
+#route de notifcation 
 @drive_bp.route('/notification/<int:notif_id>/read', methods=['POST'])
 @login_required
 def mark_notification_read(notif_id):
@@ -967,6 +1292,7 @@ def mark_notification_read(notif_id):
     return jsonify(success=True)
 
 
+#route de voir la liste des notifications
 @drive_bp.route('/notifications')
 @login_required
 def notifications():
@@ -975,7 +1301,7 @@ def notifications():
     return render_template('drive/notifications.html', notifications=notifs)
 
 
-# Dans drive.py
+# Route de decompter les notification deja lu
 @drive_bp.route('/unread_count')
 @login_required
 def unread_count():
@@ -983,60 +1309,7 @@ def unread_count():
     return jsonify({'count': count})
 
 
-
-
-# @drive_bp.route('/folder/<int:folder_id>/manage_permissions', methods=['GET', 'POST'])
-# @login_required
-# def manage_permissions(folder_id):
-#     folder = Folder.query.get_or_404(folder_id)
-
-#     # Seul le propriétaire ou quelqu'un avec can_edit peut gérer les permissions
-#     if folder.owner_id != current_user.id and not user_can(folder, 'edit'):
-#         flash("Vous n'avez pas la permission de gérer les accès de ce dossier.", "danger")
-#         return redirect(url_for('drive.folder', folder_id=folder_id))
-
-#     # === GET : afficher la page de gestion ===
-#     if request.method == 'GET':
-#         # Tous les utilisateurs qui ont accès au dossier (comme dans create_subfolder)
-#         accessible_user_ids = [p.user_id for p in folder.permissions]
-#         if folder.owner_id != current_user.id:
-#             accessible_user_ids.append(current_user.id)
-#         # On ajoute aussi tous les autres utilisateurs pour pouvoir les ajouter
-#         all_users = User.query.filter(User.id != current_user.id).all()
-
-#         return render_template(
-#             'drive/manage_permissions.html',
-#             folder=folder,
-#             users_with_access=User.query.filter(User.id.in_(accessible_user_ids)).all(),
-#             all_users=all_users
-#         )
-
-#     if request.method == 'POST':
-#         # On supprime tout
-#         FolderPermission.query.filter_by(folder_id=folder.id).delete()
-
-#         # On parcourt tous les users soumis
-#         for key in request.form:
-#             if key.startswith('perm_') and '_read' in key:  # On ne traite que les "read" pour éviter les doublons
-#                 user_id = int(key.split('_')[1])
-
-#                 perm = FolderPermission(
-#                     folder_id=folder.id,
-#                     user_id=user_id,
-#                     can_read='read' in key and request.form.get(f"perm_{user_id}_read") == 'on',
-#                     can_edit=request.form.get(f"perm_{user_id}_edit") == 'on',
-#                     can_delete=request.form.get(f"perm_{user_id}_delete") == 'on',
-#                     can_download=request.form.get(f"perm_{user_id}_download") == 'on'
-#                 )
-#                 if perm.can_read or perm.can_edit or perm.can_delete or perm.can_download:
-#                     db.session.add(perm)
-
-#         db.session.commit()
-#         flash("Permissions mises à jour avec succès !", "success")
-#         return redirect(url_for('drive.folder', folder_id=folder.id))
-
-
-
+# route pour modifier les permissions pour un dossier
 @drive_bp.route('/folder/<int:folder_id>/manage_permissions', methods=['GET', 'POST'])
 @login_required
 def manage_permissions(folder_id):
@@ -1055,8 +1328,6 @@ def manage_permissions(folder_id):
             all_users=all_users
         )
 
-    # === POST : mise à jour des permissions ===
-    # === POST : mise à jour des permissions ===
     if request.method == 'POST':
         # 1. ON SAUVEGARDE LES ANCIENNES PERMISSIONS AVANT DE TOUT SUPPRIMER
         old_perms_query = FolderPermission.query.filter_by(folder_id=folder.id).all()
@@ -1094,7 +1365,7 @@ def manage_permissions(folder_id):
 
         db.session.commit()
 
-        # === NOTIFICATIONS INTELLIGENTES (maintenant ça marche !) ===
+        # === NOTIFICATIONS INTELLIGENTES (uniquement internes) ===
         new_perms_query = FolderPermission.query.filter_by(folder_id=folder.id).all()
         new_permissions = {p.user_id: p for p in new_perms_query}
 
@@ -1123,15 +1394,11 @@ def manage_permissions(folder_id):
                 droits_str = ", ".join(droits) if droits else "Aucun droit"
                 subject = f"Nouvel accès : {folder.name}"
                 titre = "Vous avez reçu un accès à un dossier"
-                message = "vous a donné accès au dossier"
-                couleur = "#e8f5e8"
 
             # --- ACCÈS RETIRÉ ---
             elif old_perm and not new_perm:
                 subject = f"Accès retiré : {folder.name}"
                 titre = "Votre accès a été retiré"
-                message = "a retiré votre accès au dossier"
-                couleur = "#ffe8e8"
                 droits_str = "Vous n’avez plus accès à ce dossier."
 
             # --- DROITS MODIFIÉS ---
@@ -1143,7 +1410,7 @@ def manage_permissions(folder_id):
                     changements.append("Édition" if new_perm.can_edit else "- Édition")
                 if old_perm.can_delete != new_perm.can_delete:
                     changements.append("Suppression" if new_perm.can_delete else "- Suppression")
-                if old_perm.can_download != new_perm.can_download:
+                if new_perm.can_download != old_perm.can_download:
                     changements.append("Téléchargement" if new_perm.can_download else "- Téléchargement")
 
                 if not changements:
@@ -1151,64 +1418,17 @@ def manage_permissions(folder_id):
 
                 subject = f"Droits mis à jour : {folder.name}"
                 titre = "Vos droits ont été modifiés"
-                message = "a modifié vos droits sur le dossier"
-                couleur = "#fff8e1"
                 droits_str = "<br>".join(changements)
 
             else:
                 continue
 
-            # === ENVOI EMAIL ===
-            html_body = f"""
-            <!DOCTYPE html>
-            <html lang="fr">
-            <head><meta charset="UTF-8"><title>{subject}</title></head>
-            <body style="margin:0;padding:0;background:#f8f9fa;font-family:'Segoe UI',sans-serif;">
-            <table width="100%" cellpadding="0" cellspacing="0" style="background:#f8f9fa;padding:40px 20px;">
-            <tr><td align="center">
-                <table style="max-width:620px;background:#fff;border-radius:16px;overflow:hidden;box-shadow:0 10px 30px rgba(0,0,0,0.08);">
-                <tr><td style="background:linear-gradient(135deg,#0066cc,#003087);padding:30px;text-align:center;color:#fff;">
-                    <h1 style="margin:0;font-size:28px;">Archivage des données</h1>
-                    <p style="margin:10px 0 0;font-size:16px;">Institut National de la Statistique</p>
-                </td></tr>
-                <tr><td style="padding:40px;">
-                    <h2 style="color:#003087;margin-top:0;">{titre}</h2>
-                    <p style="font-size:16px;color:#333;">
-                        Bonjour <strong>{user.name.split()[0]}</strong>,
-                    </p>
-                    <p style="font-size:16px;color:#333;">
-                        <strong>{current_user.name}</strong> {message} :
-                    </p>
-                    <div style="background:#f0f7ff;border-left:6px solid #0066cc;padding:20px;border-radius:8px;margin:25px 0;">
-                        <h3 style="color:#003087;margin:0 0 10px;">{folder.name}</h3>
-                        {f"<p style='color:#555;'><em>{folder.description_folder}</em></p>" if folder.description_folder else ""}
-                    </div>
-                    <div style="background:{couleur};padding:18px;border-radius:8px;margin:25px 0;">
-                        <p style="margin:0;font-size:16px;"><strong>Information :</strong><br>{droits_str}</p>
-                    </div>
-                    {"<div style='text-align:center;margin:35px 0;'><a href='" + folder_url + "' style='background:#0066cc;color:#fff;padding:16px 36px;text-decoration:none;border-radius:50px;font-weight:600;'>Accéder au dossier</a></div>" if new_perm else ""}
-                </td></tr>
-                </table>
-            </td></tr></table>
-            </body></html>
-            """
-
-            msg = Message(
-                subject=subject,
-                recipients=[user.email],
-                sender="Portail DSDS <djongwangpaklam@gmail.com>",
-                html=html_body
-            )
-            try:
-                mail.send(msg)
-            except Exception as e:
-                print(f"Erreur envoi email à {user.email}: {e}")
-
+            # Notification interne 
             if new_perm:
                 send_notification(
                     user_id=user.id,
                     title=subject.split(" : ")[0],
-                    message=f"{current_user.name} a modifié vos droits sur « {folder.name } »",
+                    message=f"{current_user.name} a modifié vos droits sur « {folder.name} »",
                     url=folder_url
                 )
 
@@ -1227,6 +1447,8 @@ def format_bytes(bytes_num):
     exp = min(exp, len(units) - 1)
     return f"{bytes_num / (base ** exp):.1f} {units[exp]}".replace('.0 ', ' ')
 
+
+#route pour la barre de rechercher
 @drive_bp.route('/search')
 @login_required
 def search():
@@ -1282,10 +1504,7 @@ def search():
     })
 
 
-
-
-from sqlalchemy import func
-
+#fonction utulitaire pour la taille des stockage des donneees du user connecter
 def get_user_total_storage(user_id):
     """
     Retourne la taille totale des fichiers de l'utilisateur (jamais NULL)
@@ -1300,6 +1519,7 @@ def get_user_total_storage(user_id):
     return int(total)  # Retourne toujours un entier
 
 
+#route pour la taille totale des donnees stocker du user connecter
 @drive_bp.route('/storage/total')
 @login_required
 def storage_total():
@@ -1310,7 +1530,7 @@ def storage_total():
     })
 
 
-
+#fonction utlitaire pour le formatage en byte 
 def format_bytes(bytes_num):
     if bytes_num == 0:
         return "0 o"

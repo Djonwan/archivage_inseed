@@ -11,6 +11,6 @@ class Activity(db.Model):
     action = db.Column(db.String(50), nullable=False)  # created, uploaded, renamed, opened, downloaded
     timestamp = db.Column(db.DateTime, default=datetime.utcnow, index=True)
 
-    user = db.relationship('User')
+    user = db.relationship('User', passive_deletes=True)
     file = db.relationship('File')
     folder = db.relationship('Folder')

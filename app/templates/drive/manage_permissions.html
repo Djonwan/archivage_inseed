@@ -17,7 +17,6 @@
         </div>
 
         <div class="card-body">
-
           <!-- MESSAGE PROPRIÉTAIRE (FIXE ET CLAIR) -->
           <div class="alert alert-info d-flex align-items-center mb-4">
             <i class="bi bi-person-badge-fill fs-4 me-3"></i>
@@ -30,7 +29,6 @@
               </small>
             </div>
           </div>
-
           <!-- TABLEAU DES UTILISATEURS (SANS LE PROPRIÉTAIRE) -->
           <form method="POST">
             <div class="table-responsive">
@@ -78,11 +76,7 @@
                         </tr>
                     {% endfor %}
                 </tbody>
-               
-
-
               </table>
-
               {% if all_users|selectattr('id', '!=', folder.owner_id)|list|length == 0 %}
                 <div class="text-center py-5 text-muted">
                   <i class="bi bi-people fs-1"></i>
@@ -90,7 +84,6 @@
                 </div>
               {% endif %}
             </div>
-
             <div class="mt-4 text-end">
               <a href="{{ url_for('drive.folder', folder_id=folder.id) }}" class="btn btn-secondary me-2">
                 Annuler

@@ -1,3 +1,4 @@
+<!-- templates/admin/users_list.html -->
 {% extends "base.html" %}
 {% block title %}Gestion des utilisateurs{% endblock %}
 
@@ -14,21 +15,23 @@
     <div class="card-body p-0">
       <div class="table-responsive">
         <table class="table table-hover mb-0">
+          <!-- templates/admin/users_list.html -->
           <thead class="table-light">
             <tr>
               <th>Photo</th>
               <th>Nom</th>
               <th>Email</th>
               <th>Rôle</th>
+              <th>Statut</th>
               <th class="text-center">Actions</th>
             </tr>
           </thead>
           <tbody>
             {% for u in users %}
-            <tr>
+            <tr class="{% if not u.is_active %}table-warning{% endif %}">
               <td>
                 <img src="{{ url_for('static', filename='img/profiles/' ~ (u.profile_picture or 'default.jpg')) }}"
-                     class="rounded-circle" width="40" height="40" style="object-fit: cover;">
+                    class="rounded-circle" width="40" height="40" style="object-fit: cover;">
               </td>
               <td class="fw-500">{{ u.name }}</td>
               <td>{{ u.email }}</td>
@@ -37,7 +40,21 @@
                   {{ u.role.replace('_', ' ') | title }}
                 </span>
               </td>
+              <td>
+                {% if u.is_active %}
+                  <span class="badge bg-success">Activé</span>
+                {% else %}
+                  <span class="badge bg-secondary">En attente</span>
+                {% endif %}
+              </td>
               <td class="text-center">
+                <!-- Bouton Activer / Désactiver -->
+                <button onclick="toggleActive({{ u.id }}, '{{ u.name }}', {{ u.is_active|lower }})"
+                        class="btn btn-sm btn-outline-{% if u.is_active %}warning{% else %}success{% endif %}">
+                  <i class="bi {% if u.is_active %}bi-person-x{% else %}bi-person-check{% endif %}"></i>
+                  {% if u.is_active %}Désactiver{% else %}Activer{% endif %}
+                </button>
+
                 <a href="{{ url_for('admin.edit_user', user_id=u.id) }}" class="btn btn-sm btn-outline-primary">
                   <i class="bi bi-pencil"></i>
                 </a>
@@ -69,5 +86,42 @@ function deleteUser(id, name) {
       });
   }
 }
+</script>
+<script>
+  function toggleActive(userId, userName, currentStatus) {
+    const action = currentStatus ? "désactiver" : "activer";
+    if (!confirm(`Voulez-vous vraiment ${action} le compte de "${userName}" ?`)) {
+      return;
+    }
+
+    fetch(`/admin/users/${userId}/toggle-active`, {
+      method: 'POST',
+      headers: { 'X-Requested-With': 'XMLHttpRequest' }
+    })
+    .then(r => r.json())
+    .then(data => {
+      if (data.success) {
+        location.reload();
+      } else {
+        alert(data.message || "Erreur lors de la modification du statut");
+      }
+    })
+    .catch(() => alert("Erreur réseau"));
+  }
+
+  function deleteUser(id, name) {
+    if (confirm(`Supprimer définitivement l'utilisateur "${name}" ?`)) {
+      fetch(`/admin/users/${id}/delete`, { method: 'POST' })
+        .then(r => r.json())
+        .then(data => {
+          if (data.success) {
+            location.reload();
+          } else {
+            alert(data.message || "Erreur lors de la suppression");
+          }
+        });
+    }
+  }
+
 </script>
 {% endblock %}

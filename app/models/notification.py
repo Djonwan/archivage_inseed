@@ -13,7 +13,7 @@ class Notification(db.Model):
     is_read = db.Column(db.Boolean, default=False)
     created_at = db.Column(db.DateTime, default=datetime.utcnow, index=True)
 
-    user = db.relationship('User', backref='notifications')
+    user = db.relationship('User', backref='notifications', passive_deletes=True)
 
     def mark_as_read(self):
         self.is_read = True

@@ -20,10 +20,20 @@
           <label>Mot de passe</label>
           <input type="password" name="password" class="form-control" required>
         </div>
-        <div class="mb-3">
-          <label>Rôle</label>
-          <input type="text" name="role" class="form-control" required>
-        </div>
+        <div class="mb-4">
+              <label for="role" class="form-label fw-bold">
+                <i class="bi bi-shield-check text-primary"></i> Rôle dans le système
+              </label>
+              <select name="role" id="role" class="form-select form-select-lg" required>
+                <option value="" disabled selected>Choisir un rôle...</option>
+                <option value="super_admin">Super Administrateur</option>
+                <option value="cadre_inseed">Cadre INSEED</option>
+                <option value="responsabe_inseed">Responsable INSEED</option>
+                <option value="utilisateur_simple">Utilisateur simple</option>
+                <option value="autre">Autre</option>  
+              </select>
+              <div class="invalid-feedback">Veuillez sélectionner un rôle.</div>
+            </div>
         <div class="mb-3">
           <label>Photo de profil</label>
           <input type="file" name="profile_picture" class="form-control" accept="image/*">

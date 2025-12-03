@@ -1,0 +1,48 @@
+# requirements.txt - Archivage INSEED (Production - Novembre 2025)
+Flask==3.0.3
+Flask-SQLAlchemy==3.1.1
+Flask-Login==0.6.3
+Flask-Bcrypt==1.0.1
+Flask-Mail==0.10.0
+Flask-Migrate==4.0.7
+Flask-Limiter[redis]==3.8.0
+Flask-Talisman==1.1.0
+Flask-WTF==1.2.1
+Werkzeug==3.0.4
+python-dotenv==1.0.1
+
+# Base de données
+SQLAlchemy==2.0.35
+
+# Sécurité & Auth
+bcrypt==4.2.0
+PyJWT==2.9.0                   
+
+# Email & Notifications
+celery[redis]==5.4.0           
+redis==5.0.8
+
+# Uploads & Fichiers
+Pillow==10.4.0                 
+
+# Utilitaires
+gunicorn==23.0.0                # Serveur WSGI 
+gevent==24.10.1                 # Pour gunicorn avec workers async 
+
+# Monitoring & Debugging (optionnel)
+sentry-sdk[flask]==2.15.0
+
+
+
+
+
+
+pip install Flask
+pip install Flask-Login
+pip install Flask-SQLAlchemy
+pip install Flask-Mail
+pip install Flask-Migrate          
+pip install Werkzeug
+pip install sqlalchemy
+pip install python-dotenv  
+pip install bcrypt       

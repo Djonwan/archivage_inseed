@@ -1,0 +1,506 @@
+<!-- app/templates/drive/create_folder.html -->
+{% extends "base.html" %}
+{% block title %}Créer un dossier - DSDS{% endblock %}
+
+{% block content %}
+<div class="sticky-top bg-white border-bottom pb-2" style="top: 70px; z-index: 998;">
+  <div class="container-fluid d-flex justify-content-between align-items-center">
+    <h2 class="fw-bold mb-0">Créer un nouveau dossier</h2>
+  </div>
+</div>
+
+<!-- TOAST DE SUCCÈS -->
+<div class="toast-container position-fixed top-0 end-0 p-3" style="z-index: 9999;">
+  <div id="successToast" class="toast align-items-center text-white bg-success border-0" role="alert">
+    <div class="d-flex">
+      <div class="toast-body" id="toastMessage"></div>
+      <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast"></button>
+    </div>
+  </div>
+</div>
+
+<div class="p-4">
+  <form id="createFolderForm" class="needs-validation" novalidate>
+    <!-- NOM -->
+    <div class="mb-3">
+      <label class="form-label fw-bold">Nom du dossier <span class="text-danger">*</span></label>
+      <input type="text" name="name" class="form-control" placeholder="Ex: Rapports 2025" required>
+      <div class="invalid-feedback">Le nom est requis.</div>
+    </div>
+
+    <!-- DESCRIPTION -->
+    <div class="mb-4">
+      <label class="form-label fw-bold">Description</label>
+      <textarea name="description" class="form-control" rows="3" placeholder="Contenu du dossier..."></textarea>
+    </div>
+
+    <!-- DOSSIER PERSONNEL -->
+    <div class="alert alert-warning border-start border-warning border-5 p-4 mb-4 rounded-3 shadow-sm" role="alert">
+      <div class="form-check form-switch d-flex align-items-center">
+        <input class="form-check-input" type="checkbox" id="isPersonalToggle" style="transform: scale(1.5);">
+        <label class="form-check-label fw-bold text-dark ms-4 fs-5" for="isPersonalToggle">
+          Dossier personnel (privé)
+        </label>
+      </div>
+      <div class="small text-muted mt-3 ms-5">
+        Personne d'autre que vous n'aura accès à ce dossier.<br>
+        <strong class="text-danger">Les super administrateurs pourront toujours le voir et y accéder.</strong>
+      </div>
+    </div>
+
+    <!-- BLOC PERMISSIONS (caché par défaut si personnel) -->
+    <div id="permissionsBlock" class="transition-all">
+      <div class="card mb-4 border-primary shadow-sm">
+        <div class="card-header bg-primary text-white d-flex justify-content-between align-items-center">
+          <strong class="fs-5">Partager avec d'autres utilisateurs</strong>
+          <div>
+            <button type="button" class="btn btn-sm btn-light me-2" id="selectAllReadBtn">
+              Tout cocher (Lecture)
+            </button>
+            <button type="button" class="btn btn-sm btn-outline-light" id="unselectAllBtn">
+              Tout décocher
+            </button>
+          </div>
+        </div>
+
+        <div class="card-body p-0">
+          <div class="table-responsive" style="max-height: 500px;">
+            <table class="table table-sm table-hover align-middle mb-0">
+              <thead class="table-light sticky-top" style="top: 0; z-index: 10; background: white;">
+                <tr>
+                  <th style="width: 60px; position: sticky; left: 0; background: white; z-index: 11;">
+                    <input type="checkbox" class="form-check-input" id="selectAllUsers" title="Tout sélectionner">
+                  </th>
+                  <th style="min-width: 280px; position: sticky; left: 60px; background: white; z-index: 11;">Utilisateur</th>
+                  <th class="text-center" style="width: 100px;">Lire</th>
+                  <th class="text-center" style="width: 110px;">Modifier</th>
+                  <th class="text-center" style="width: 110px;">Supprimer</th>
+                  <th class="text-center" style="width: 130px;">Télécharger</th>
+                </tr>
+              </thead>
+              <tbody>
+                {% for user in all_users %}
+                <tr data-user-id="{{ user.id }}">
+                  <td class="text-center" style="position: sticky; left: 0; background: white; z-index: 9;">
+                    <input type="checkbox" class="form-check-input user-master-checkbox">
+                  </td>
+                  <td style="position: sticky; left: 60px; background: white; z-index: 9;">
+                    <div class="d-flex align-items-center">
+                      <div class="bg-primary text-white rounded-circle d-flex align-items-center justify-content-center me-3 flex-shrink-0" style="width:40px; height:40px;">
+                        {{ user.name[0]|upper }}
+                      </div>
+                      <div class="text-truncate">
+                        <strong>{{ user.name }}</strong><br>
+                        <small class="text-muted">{{ user.email }}</small>
+                        <span class="badge 
+                          {% if user.role == 'super_admin' %}bg-danger
+                          {% elif user.role == 'directeur_dsds' %}bg-warning text-dark
+                          {% elif user.role == 'divisionnaire' %}bg-info
+                          {% elif user.role == 'chef_service' %}bg-primary
+                          {% else %}bg-secondary{% endif %} ms-2">
+                          {{ user.role | replace('_', ' ') | title }}
+                        </span>
+                      </div>
+                    </div>
+                  </td>
+                  <td class="text-center"><input type="checkbox" class="form-check-input perm-read" name="perm_{{ user.id }}_read" checked></td>
+                  <td class="text-center"><input type="checkbox" class="form-check-input perm-edit" name="perm_{{ user.id }}_edit"></td>
+                  <td class="text-center"><input type="checkbox" class="form-check-input perm-delete" name="perm_{{ user.id }}_delete"></td>
+                  <td class="text-center"><input type="checkbox" class="form-check-input perm-download" name="perm_{{ user.id }}_download" checked></td>
+                </tr>
+                {% endfor %}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- SUBMIT -->
+    <div class="text-end mt-4">
+      <button type="submit" class="btn btn-lg btn-primary px-5 shadow" id="submitBtn">
+        <span class="spinner-border spinner-border-sm d-none me-2" id="spinner"></span>
+        <span id="btnText">Créer le dossier</span>
+      </button>
+    </div>
+
+    <!-- Champ caché pour envoyer l'état -->
+    <input type="hidden" name="is_personal" id="isPersonalHidden" value="off">
+  </form>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<style>
+  .transition-all {
+    transition: all 0.4s ease-in-out;
+    overflow: hidden;
+  }
+  .hidden-block {
+    opacity: 0;
+    max-height: 0;
+    margin: 0 !important;
+    padding: 0 !important;
+    border: none !important;
+  }
+</style>
+
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+  const toastEl = document.getElementById('successToast');
+  const toast = new bootstrap.Toast(toastEl);
+  const isPersonalToggle = document.getElementById('isPersonalToggle');
+  const permissionsBlock = document.getElementById('permissionsBlock');
+  const submitBtn = document.getElementById('submitBtn');
+  const btnText = document.getElementById('btnText');
+  const spinner = document.getElementById('spinner');
+
+  // Fonction pour masquer/afficher le bloc permissions
+  function togglePermissionsBlock(show) {
+    if (show) {
+      permissionsBlock.classList.remove('hidden-block');
+      permissionsBlock.style.opacity = '1';
+      permissionsBlock.style.maxHeight = '1000px';
+      permissionsBlock.style.marginBottom = '1.5rem';
+      btnText.textContent = 'Créer le dossier';
+    } else {
+      permissionsBlock.classList.add('hidden-block');
+      permissionsBlock.style.opacity = '0';
+      permissionsBlock.style.maxHeight = '0';
+      btnText.innerHTML = 'Créer le dossier personnel';
+    }
+  }
+
+  // État initial
+  togglePermissionsBlock(!isPersonalToggle.checked);
+
+  // Écouteur sur le toggle
+  isPersonalToggle.addEventListener('change', function () {
+    document.getElementById('isPersonalHidden').value = this.checked ? 'on' : 'off';
+    togglePermissionsBlock(!this.checked);
+
+    // Change le texte du bouton
+    if (this.checked) {
+      submitBtn.classList.replace('btn-primary', 'btn-danger');
+    } else {
+      submitBtn.classList.replace('btn-danger', 'btn-primary');
+    }
+  });
+
+  // === TOUT TON CODE CHECKBOX EXISTANT RESTE INCHANGÉ ===
+  function updateHeaderCheckboxes() {
+    ['read', 'edit', 'delete', 'download'].forEach(perm => {
+      const all = document.querySelectorAll(`.perm-${perm}`);
+      const checked = document.querySelectorAll(`.perm-${perm}:checked`);
+      const header = document.getElementById(`checkAll${perm.charAt(0).toUpperCase() + perm.slice(1)}`);
+      if (!header) return;
+      header.checked = all.length === checked.length;
+      header.indeterminate = checked.length > 0 && checked.length < all.length;
+    });
+  }
+
+  // ... (tout ton code checkbox maître, colonnes, etc. reste identique)
+  // Je te le remets pas pour pas alourdir, tu le gardes tel quel
+
+  // Soumission du formulaire
+  document.getElementById('createFolderForm').addEventListener('submit', async function(e) {
+    e.preventDefault();
+    spinner.classList.remove('d-none');
+    submitBtn.disabled = true;
+
+    const formData = new FormData(this);
+
+    try {
+      const response = await fetch('{{ url_for("drive.create_folder") }}', {
+        method: 'POST',
+        body: formData
+      });
+
+      const result = await response.json();
+
+      if (result.success) {
+        document.getElementById('toastMessage').textContent = result.message;
+        toast.show();
+
+        // Reset du formulaire
+        this.reset();
+        isPersonalToggle.checked = false;
+        togglePermissionsBlock(true);
+        submitBtn.classList.replace('btn-danger', 'btn-primary');
+        btnText.textContent = 'Créer le dossier';
+
+        // Réinitialise les checkboxes
+        document.querySelectorAll('.perm-read, .perm-download').forEach(cb => cb.checked = true);
+        document.querySelectorAll('.user-master-checkbox').forEach(cb => cb.checked = false);
+        updateHeaderCheckboxes();
+      } else {
+        alert('Erreur : ' + (result.error || 'Une erreur est survenue'));
+      }
+    } catch (err) {
+      console.error(err);
+      alert('Erreur réseau.');
+    } finally {
+      spinner.classList.add('d-none');
+      submitBtn.disabled = false;
+    }
+  });
+
+  // Initialisation
+  updateHeaderCheckboxes();
+});
+</script>
+{% endblock %}
+
+
+
+
+
+
+
+
+
+
+<!-- app/templates/drive/create_folder.html -->
+{% extends "base.html" %}
+{% block title %}Créer un dossier - DSDS{% endblock %}
+
+{% block content %}
+<div class="sticky-top bg-white border-bottom pb-2" style="top: 70px; z-index: 998;">
+  <div class="container-fluid d-flex justify-content-between align-items-center">
+    <h2 class="fw-bold mb-0">Créer un nouveau dossier</h2>
+  </div>
+</div>
+
+<!-- TOAST DE SUCCÈS -->
+<div class="toast-container position-fixed top-0 end-0 p-3" style="z-index: 9999;">
+  <div id="successToast" class="toast align-items-center text-white bg-success border-0" role="alert">
+    <div class="d-flex">
+      <div class="toast-body" id="toastMessage"></div>
+      <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast"></button>
+    </div>
+  </div>
+</div>
+
+<div class="p-4">
+  <form id="createFolderForm" class="needs-validation" novalidate>
+    <!-- NOM -->
+    <div class="mb-3">
+      <label class="form-label fw-bold">Nom du dossier <span class="text-danger">*</span></label>
+      <input type="text" name="name" class="form-control" placeholder="Ex: Rapports 2025" required>
+      <div class="invalid-feedback">Le nom est requis.</div>
+    </div>
+
+    <!-- DESCRIPTION -->
+    <div class="mb-4">
+      <label class="form-label fw-bold">Description</label>
+      <textarea name="description" class="form-control" rows="3" placeholder="Contenu du dossier..."></textarea>
+    </div>
+
+    
+
+    <!-- PERMISSIONS -->
+    <div class="card mb-4">
+      <div class="card-header bg-light d-flex justify-content-between align-items-center">
+        <strong>Partager avec</strong>
+        <div>
+          <button type="button" class="btn btn-sm btn-outline-success me-2" id="selectAllReadBtn">
+            Tout cocher (Lecture)
+          </button>
+          <button type="button" class="btn btn-sm btn-outline-danger" id="unselectAllBtn">
+            Tout décocher
+          </button>
+        </div>
+      </div>
+
+      <div class="card-body p-0">
+        <div class="table-responsive" style="max-height: 500px;">
+          <table class="table table-sm table-hover align-middle mb-0">
+            <!-- EN-TÊTE FIXE -->
+            <thead class="table-light sticky-top" style="top: 0; z-index: 10; background: white;">
+              <tr>
+                <th style="width: 60px; position: sticky; left: 0; background: white; z-index: 11;">
+                  <input type="checkbox" class="form-check-input" id="selectAllUsers" title="Tout sélectionner">
+                </th>
+                <th style="min-width: 280px; position: sticky; left: 60px; background: white; z-index: 11;">
+                  Utilisateur
+                </th>
+                <th class="text-center" style="width: 100px;">Lire<br>
+                  <input type="checkbox" class="form-check-input mt-2" id="checkAllRead" checked>
+                </th>
+                <th class="text-center" style="width: 110px;">Modifier<br>
+                  <input type="checkbox" class="form-check-input mt-2" id="checkAllEdit">
+                </th>
+                <th class="text-center" style="width: 110px;">Supprimer<br>
+                  <input type="checkbox" class="form-check-input mt-2" id="checkAllDelete">
+                </th>
+                <th class="text-center" style="width: 130px;">Télécharger<br>
+                  <input type="checkbox" class="form-check-input mt-2" id="checkAllDownload" checked>
+                </th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for user in all_users %}
+              <tr data-user-id="{{ user.id }}">
+                <!-- Colonne checkbox maître (fixe à gauche) -->
+                <td class="text-center" style="position: sticky; left: 0; background: white; z-index: 9;">
+                  <input type="checkbox" class="form-check-input user-master-checkbox">
+                </td>
+
+                <!-- Colonne nom utilisateur (fixe à gauche après la checkbox) -->
+                <td style="position: sticky; left: 60px; background: white; z-index: 9;">
+                  <div class="d-flex align-items-center">
+                    <div class="bg-primary text-white rounded-circle d-flex align-items-center justify-content-center me-3 flex-shrink-0" style="width:40px; height:40px;">
+                      {{ user.name[0]|upper }}
+                    </div>
+                    <div class="text-truncate">
+                      <strong>{{ user.name }}</strong><br>
+                      <small class="text-muted">{{ user.email }}</small>
+                      <span class="badge 
+                        {% if user.role == 'super_admin' %}bg-danger
+                        {% elif user.role == 'directeur_dsds' %}bg-warning text-dark
+                        {% elif user.role == 'divisionnaire' %}bg-info
+                        {% elif user.role == 'chef_service' %}bg-primary
+                        {% else %}bg-secondary{% endif %} ms-2">
+                        {{ user.role | replace('_', ' ') | title }}
+                      </span>
+                    </div>
+                  </div>
+                </td>
+
+                <td class="text-center"><input type="checkbox" class="form-check-input perm-read" name="perm_{{ user.id }}_read" checked></td>
+                <td class="text-center"><input type="checkbox" class="form-check-input perm-edit" name="perm_{{ user.id }}_edit"></td>
+                <td class="text-center"><input type="checkbox" class="form-check-input perm-delete" name="perm_{{ user.id }}_delete"></td>
+                <td class="text-center"><input type="checkbox" class="form-check-input perm-download" name="perm_{{ user.id }}_download" checked></td>
+              </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- SUBMIT -->
+    <div class="text-end">
+      <button type="submit" class="btn btn-primary px-5" id="submitBtn">
+        <span class="spinner-border spinner-border-sm d-none" id="spinner"></span>
+        Créer le dossier
+      </button>
+    </div>
+  </form>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+
+  const toastEl = document.getElementById('successToast');
+  const toast = new bootstrap.Toast(toastEl);
+
+  function updateHeaderCheckboxes() {
+    ['read', 'edit', 'delete', 'download'].forEach(perm => {
+      const all = document.querySelectorAll(`.perm-${perm}`);
+      const checked = document.querySelectorAll(`.perm-${perm}:checked`);
+      const header = document.getElementById(`checkAll${perm.charAt(0).toUpperCase() + perm.slice(1)}`);
+      if (!header) return;
+      header.checked = all.length === checked.length;
+      header.indeterminate = checked.length > 0 && checked.length < all.length;
+    });
+  }
+
+  // Checkboxes colonnes
+  document.getElementById('checkAllRead')?.addEventListener('change', e => { document.querySelectorAll('.perm-read').forEach(cb => cb.checked = e.target.checked); updateHeaderCheckboxes(); });
+  document.getElementById('checkAllEdit')?.addEventListener('change', e => { document.querySelectorAll('.perm-edit').forEach(cb => cb.checked = e.target.checked); updateHeaderCheckboxes(); });
+  document.getElementById('checkAllDelete')?.addEventListener('change', e => { document.querySelectorAll('.perm-delete').forEach(cb => cb.checked = e.target.checked); updateHeaderCheckboxes(); });
+  document.getElementById('checkAllDownload')?.addEventListener('change', e => { document.querySelectorAll('.perm-download').forEach(cb => cb.checked = e.target.checked); updateHeaderCheckboxes(); });
+
+  // Boutons haut
+  document.getElementById('selectAllReadBtn')?.addEventListener('click', () => {
+    document.querySelectorAll('.perm-read, .perm-download').forEach(cb => cb.checked = true);
+    ['checkAllRead', 'checkAllDownload'].forEach(id => document.getElementById(id).checked = true);
+    updateHeaderCheckboxes();
+  });
+
+  document.getElementById('unselectAllBtn')?.addEventListener('click', () => {
+    document.querySelectorAll('input[type="checkbox"]').forEach(cb => { cb.checked = false; cb.indeterminate = false; });
+    updateHeaderCheckboxes();
+  });
+
+  // Checkbox maître par ligne
+  document.querySelectorAll('.user-master-checkbox').forEach(master => {
+    master.addEventListener('change', function () {
+      const row = this.closest('tr');
+      row.querySelectorAll('.perm-read, .perm-edit, .perm-delete, .perm-download').forEach(cb => cb.checked = this.checked);
+      updateHeaderCheckboxes();
+    });
+  });
+
+  // Mise à jour case maître quand on change une permission
+  document.querySelectorAll('.perm-read, .perm-edit, .perm-delete, .perm-download').forEach(cb => {
+    cb.addEventListener('change', function () {
+      const row = this.closest('tr');
+      const perms = row.querySelectorAll('.perm-read, .perm-edit, .perm-delete, .perm-download');
+      const allChecked = Array.from(perms).every(c => c.checked);
+      const someChecked = Array.from(perms).some(c => c.checked);
+
+      const master = row.querySelector('.user-master-checkbox');
+      master.checked = allChecked;
+      master.indeterminate = someChecked && !allChecked;
+
+      updateHeaderCheckboxes();
+    });
+  });
+
+  // Tout sélectionner (coin haut gauche)
+  document.getElementById('selectAllUsers')?.addEventListener('change', function () {
+    const checked = this.checked;
+    document.querySelectorAll('.user-master-checkbox').forEach(cb => { cb.checked = checked; cb.indeterminate = false; });
+    document.querySelectorAll('.perm-read, .perm-edit, .perm-delete, .perm-download').forEach(cb => cb.checked = checked);
+    updateHeaderCheckboxes();
+  });
+
+  // Initialisation
+  updateHeaderCheckboxes();
+
+  // Soumission formulaire
+  document.getElementById('createFolderForm').addEventListener('submit', async function(e) {
+    e.preventDefault();
+    const spinner = document.getElementById('spinner');
+    const submitBtn = document.getElementById('submitBtn');
+    spinner.classList.remove('d-none');
+    submitBtn.disabled = true;
+
+    const formData = new FormData(this);
+
+    try {
+      const response = await fetch('{{ url_for("drive.create_folder") }}', {
+        method: 'POST',
+        body: formData
+      });
+
+      const result = await response.json();
+
+      if (result.success) {
+        document.getElementById('toastMessage').textContent = result.message || "Dossier créé avec succès !";
+        toast.show();
+        this.reset();
+
+        document.querySelectorAll('input[name$="_read"], input[name$="_download"]').forEach(cb => cb.checked = true);
+        document.querySelectorAll('.user-master-checkbox').forEach(cb => { cb.checked = true; cb.indeterminate = false; });
+
+        updateHeaderCheckboxes();
+      } else {
+        alert('Erreur : ' + (result.error || 'Une erreur est survenue'));
+      }
+    } catch (err) {
+      console.error(err);
+      alert('Erreur réseau. Veuillez réessayer.');
+    } finally {
+      spinner.classList.add('d-none');
+      submitBtn.disabled = false;
+    }
+  });
+
+});
+</script>
+{% endblock %}

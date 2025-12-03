@@ -5,13 +5,10 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>{% block title %}Portail DSDS{% endblock %}</title>
-
   <!-- Bootstrap + Icons -->
   <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet" />
   <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css" rel="stylesheet" />
   <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&display=swap" rel="stylesheet" />
-
-
   <style>
     body {
       background-color: #f3f5ff;
@@ -52,9 +49,7 @@
       font-weight: bold;
       padding: 8px;
     }
-  </style>
 
-  <style>
     :root {
       --google-blue: #1a73e8;
       --google-gray: #5f6368;
@@ -153,9 +148,7 @@
       background-color: #f8f9fa !important;
 
     }
-  </style>
 
-  <style>
     .hover-shadow {
       transition: all 0.2s ease;
     }
@@ -172,12 +165,79 @@
     .smaller {
       font-size: 0.75rem;
     }
-  </style>
 
+    /* ============================================================= */
+    /* BOUTON OFFICIEL INSEED 2025 – Remplace btn-light partout !   */
+    /* ============================================================= */
+    .btn-inseed {
+      position: relative;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 0.5rem;
+      padding: 0.1px 0.5px;
+      font-size: 0.95rem;
+      font-weight: 500;
+      line-height: 1.4;
+      color: #2c3e50;
+      background: #ffffff;
+      border: 0px solid #d0d7de;
+      border-radius: 14px !important;          /* Coins bien arrondis */
+     
+    }
+
+    /* Hover – effet soulèvement + couleur plus foncée */
+    .btn-inseed:hover {
+      background: #f8f9fa;
+      border-color: #b0b7c0;
+      box-shadow: 0 6px 16px rgba(0,0,0,0.12);
+      transform: translateY(-2px);
+      color: #1a1a1a;
+    }
+
+    /* Active / Click */
+    .btn-inseed:active {
+      transform: translateY(0);
+      box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+      background: #eceff4;
+      border-color: #9ca3af;
+    }
+
+    /* Focus (accessibilité) */
+    .btn-inseed:focus-visible {
+      outline: none;
+      box-shadow: 0 0 0 4px rgba(0, 102, 204, 0.25) !important;
+    }
+
+    /* Version ronde (cloche, paramètres, avatar) */
+    .btn-inseed.rounded-circle {
+      width: 46px;
+      height: 46px;
+      padding: 0;
+      border-radius: 50% !important;
+    }
+
+    /* Version petite (badges, actions rapides) */
+    .btn-inseed.btn-sm {
+      padding: 0.45rem 0.9rem;
+      font-size: 0.85rem;
+      border-radius: 12px !important;
+    }
+
+    /* Désactivé */
+    .btn-inseed:disabled,
+    .btn-inseed.disabled {
+      opacity: 0.6;
+      cursor: not-allowed;
+      transform: none !important;
+      box-shadow: none;
+    }
+
+
+  </style>
   {% block styles %}{% endblock %}
 </head>
 
-<!-- MODAL NOTIFICATIONS -->
 <!-- MODAL NOTIFICATIONS -->
 <div class="modal fade" id="notificationsModal" tabindex="-1">
   <div class="modal-dialog modal-dialog-scrollable">
@@ -188,27 +248,31 @@
       </div>
       <div class="modal-body pt-0">
         {% if notifications %}
-          {% for notif in notifications %}
-            <div class="d-flex align-items-start py-3 px-2 border-bottom hover-shadow rounded {{ 'bg-light' if not notif.is_read else '' }}"
-                 style="cursor: pointer;"
-                 onclick="markAsReadAndGo({{ notif.id }}, '{{ notif.url|e }}')">
-              <div class="flex-shrink-0 me-3">
-                <i class="bi bi-bell text-primary fs-5"></i>
-              </div>
-              <div class="flex-grow-1">
-                <strong>{{ notif.title }}</strong><br>
-                <small class="text-muted">{{ notif.message }}</small><br>
-                <small class="text-muted smaller">
-                  {{ notif.created_at.strftime('%d/%m à %Hh%M') }}
-                </small>
-              </div>
-              {% if not notif.is_read %}
-                <span class="badge bg-primary rounded-pill">•</span>
-              {% endif %}
-            </div>
-          {% endfor %}
+        {% for notif in notifications %}
+        <div
+          class="d-flex align-items-start py-3 px-2 border-bottom hover-shadow rounded {{ 'bg-light' if not notif.is_read else '' }}"
+          style="cursor: pointer;" onclick="markAsReadAndGo({{ notif.id }}, '{{ notif.url|e }}')">
+          <div class="flex-shrink-0 me-3">
+            <i class="bi bi-bell text-primary fs-5"></i>
+          </div>
+          <div class="flex-grow-1">
+            <strong>{{ notif.title }}</strong>
+            {% if 'demande d’accès' in notif.title or 'inscription' in notif.message|lower %}
+            <span class="badge bg-warning text-dark ms-2">Nouvel utilisateur</span>
+            {% endif %}
+            <br>
+            <small class="text-muted">{{ notif.message }}</small><br>
+            <small class="text-muted smaller">
+              {{ notif.created_at.strftime('%d/%m à %Hh%M') }}
+            </small>
+          </div>
+          {% if not notif.is_read %}
+          <span class="badge bg-primary rounded-pill">•</span>
+          {% endif %}
+        </div>
+        {% endfor %}
         {% else %}
-          <p class="text-center text-muted py-5">Aucune notification</p>
+        <p class="text-center text-muted py-5">Aucune notification</p>
         {% endif %}
       </div>
       <div class="modal-footer border-0">
@@ -222,67 +286,67 @@
 
 
 <script>
-// Barre de recherche globale intelligente
-document.addEventListener('DOMContentLoaded', function () {
-  const searchInput = document.getElementById('globalSearch');
-  const resultsContainer = document.getElementById('searchResults');
-  const noResults = document.getElementById('noResults');
-  const searching = document.getElementById('searching');
-  const clearBtn = document.getElementById('clearSearch');
-  let timeout = null;
+  // Barre de recherche globale intelligente
+  document.addEventListener('DOMContentLoaded', function () {
+    const searchInput = document.getElementById('globalSearch');
+    const resultsContainer = document.getElementById('searchResults');
+    const noResults = document.getElementById('noResults');
+    const searching = document.getElementById('searching');
+    const clearBtn = document.getElementById('clearSearch');
+    let timeout = null;
 
-  // Effacer la recherche
-  clearBtn.addEventListener('click', function () {
-    searchInput.value = '';
-    resultsContainer.style.display = 'none';
-    clearBtn.style.display = 'none';
-    searchInput.focus();
-  });
-
-  // Écouter la saisie
-  searchInput.addEventListener('input', function () {
-    const query = this.value.trim();
-
-    if (query.length === 0) {
+    // Effacer la recherche
+    clearBtn.addEventListener('click', function () {
+      searchInput.value = '';
       resultsContainer.style.display = 'none';
       clearBtn.style.display = 'none';
-      return;
-    }
+      searchInput.focus();
+    });
 
-    clearBtn.style.display = 'block';
-    resultsContainer.style.display = 'block';
-    noResults.style.display = 'none';
-    searching.style.display = 'block';
+    // Écouter la saisie
+    searchInput.addEventListener('input', function () {
+      const query = this.value.trim();
 
-    // Débounce : attendre 300ms avant de lancer la recherche
-    clearTimeout(timeout);
-    timeout = setTimeout(() => {
-      performSearch(query);
-    }, 300);
-  });
+      if (query.length === 0) {
+        resultsContainer.style.display = 'none';
+        clearBtn.style.display = 'none';
+        return;
+      }
 
-  // Fermer les résultats en cliquant ailleurs
-  document.addEventListener('click', function (e) {
-    if (!searchInput.contains(e.target) && !resultsContainer.contains(e.target)) {
-      resultsContainer.style.display = 'none';
-    }
-  });
+      clearBtn.style.display = 'block';
+      resultsContainer.style.display = 'block';
+      noResults.style.display = 'none';
+      searching.style.display = 'block';
 
-  function performSearch(query) {
-    fetch(`/drive/search?q=${encodeURIComponent(query)}`)
-      .then(response => response.json())
-      .then(data => {
-        searching.style.display = 'none';
-        const resultsHTML = [];
+      // Débounce : attendre 300ms avant de lancer la recherche
+      clearTimeout(timeout);
+      timeout = setTimeout(() => {
+        performSearch(query);
+      }, 300);
+    });
 
-        if (data.files.length === 0 && data.folders.length === 0) {
-          noResults.style.display = 'block';
-          return;
-        }
+    // Fermer les résultats en cliquant ailleurs
+    document.addEventListener('click', function (e) {
+      if (!searchInput.contains(e.target) && !resultsContainer.contains(e.target)) {
+        resultsContainer.style.display = 'none';
+      }
+    });
 
-        // Fichiers
-        data.files.forEach(file => {
-          resultsHTML.push(`
+    function performSearch(query) {
+      fetch(`/drive/search?q=${encodeURIComponent(query)}`)
+        .then(response => response.json())
+        .then(data => {
+          searching.style.display = 'none';
+          const resultsHTML = [];
+
+          if (data.files.length === 0 && data.folders.length === 0) {
+            noResults.style.display = 'block';
+            return;
+          }
+
+          // Fichiers
+          data.files.forEach(file => {
+            resultsHTML.push(`
             <a href="${file.url}" class="d-block px-3 py-2 text-decoration-none hover-bg-light">
               <div class="d-flex align-items-center">
                 <i class="bi bi-file-earmark-text text-primary me-3" style="font-size:1.3rem;"></i>
@@ -294,11 +358,11 @@ document.addEventListener('DOMContentLoaded', function () {
               </div>
             </a>
           `);
-        });
+          });
 
-        // Dossiers
-        data.folders.forEach(folder => {
-          resultsHTML.push(`
+          // Dossiers
+          data.folders.forEach(folder => {
+            resultsHTML.push(`
             <a href="${folder.url}" class="d-block px-3 py-2 text-decoration-none hover-bg-light border-top">
               <div class="d-flex align-items-center">
                 <i class="bi bi-folder-fill text-warning me-3" style="font-size:1.3rem;"></i>
@@ -309,26 +373,23 @@ document.addEventListener('DOMContentLoaded', function () {
               </div>
             </a>
           `);
+          });
+
+          resultsContainer.innerHTML = resultsHTML.join('');
+        })
+        .catch(() => {
+          noResults.style.display = 'block';
+          noResults.innerHTML = 'Erreur de recherche';
         });
+    }
 
-        resultsContainer.innerHTML = resultsHTML.join('');
-      })
-      .catch(() => {
-        noResults.style.display = 'block';
-        noResults.innerHTML = 'Erreur de recherche';
-      });
-  }
+    function escapeHtml(text) {
+      const div = document.createElement('div');
+      div.textContent = text;
+      return div.innerHTML;
+    }
+  });
 
-  function escapeHtml(text) {
-    const div = document.createElement('div');
-    div.textContent = text;
-    return div.innerHTML;
-  }
-});
-</script>
-
-
-<script>
   // Mise à jour de la taille totale des fichiers
   function updateTotalStorage() {
     fetch('/drive/storage/total')
@@ -348,11 +409,7 @@ document.addEventListener('DOMContentLoaded', function () {
   // Optionnel : mise à jour après upload (si tu as un événement)
   document.addEventListener('file:uploaded', updateTotalStorage);
 </script>
-
-
-
 <body>
-
   <!-- === SIDEBAR FIXE === -->
   <div class="sidebar">
     <div class="logo">
@@ -365,6 +422,12 @@ document.addEventListener('DOMContentLoaded', function () {
           <i class="bi bi-house"></i> Accueil
         </a>
       </li>
+      <li class="nav-item">
+        <a class="nav-link {% if request.endpoint == 'drive.create_folder' %}active{% endif %}"
+          href="{{ url_for('drive.create_folder') }}">
+          <i class="bi bi-folder-plus"></i> Nouveau Dossier
+        </a>
+      </li>
 
       <li class="nav-item">
         <a class="nav-link {% if request.endpoint == 'drive.explore' %}active{% endif %}"
@@ -372,12 +435,7 @@ document.addEventListener('DOMContentLoaded', function () {
           <i class="bi bi-folder"></i> Mon Espace
         </a>
       </li>
-      <li class="nav-item">
-        <a class="nav-link {% if request.endpoint == 'drive.create_folder' %}active{% endif %}"
-          href="{{ url_for('drive.create_folder') }}">
-          <i class="bi bi-folder-plus"></i> Nouveau Dossier
-        </a>
-      </li>
+
       <li class="nav-item">
         <a class="nav-link {% if request.endpoint == 'drive.favorites' %}active{% endif %}"
           href="{{ url_for('drive.favorites') }}">
@@ -399,54 +457,37 @@ document.addEventListener('DOMContentLoaded', function () {
         </a>
       </li>
     </ul>
-
-
     <div class="mt-auto p-3">
       <div class="d-flex align-items-center">
         <i class="bi bi-hdd me-2 text-primary"></i>
         <div>
           <small class="text-muted d-block">Taille total de vos données</small>
-          <strong  id="totalStorage" class="text-dark">0 o</strong>
+          <strong id="totalStorage" class="text-dark">0 o</strong>
         </div>
       </div>
     </div>
-
-
-
-
-    
   </div>
 
   <!-- === HEADER FIXE === -->
   <div class="top-header">
-    <!-- BARRE DE RECHERCHE -->
     <!-- BARRE DE RECHERCHE GLOBALE -->
     <div class="search-container position-relative">
-
-
-
       <div class="input-group shadow-sm">
         <span class="input-group-text bg-white border-end-0 text-muted">
           <i class="bi bi-search"></i>
         </span>
-        <input type="text" 
-              class="form-control border-start-0" 
-              placeholder="Rechercher dans Archivage INSEED..." 
-              id="globalSearch" 
-              autocomplete="off"
-              style="padding-right: 75px;">
-        <span class="input-group-text bg-white border-start-0 text-muted cursor-pointer" id="clearSearch" style="display:none;">
+        <input type="text" class="form-control border-start-0" placeholder="Rechercher dans Archivage INSEED..."
+          id="globalSearch" autocomplete="off" style="padding-right: 75px;">
+        <span class="input-group-text bg-white border-start-0 text-muted cursor-pointer" id="clearSearch"
+          style="display:none;">
           <i class="bi bi-x-lg"></i>
         </span>
       </div>
 
-
-      
-
       <!-- RÉSULTATS DE RECHERCHE (dropdown) -->
-      <div id="searchResults" 
-          class="position-absolute top-100 start-0 end-0 bg-white border rounded-bottom shadow-lg mt-1" 
-          style="z-index: 1050; max-height: 70vh; overflow-y: auto; display: none;">
+      <div id="searchResults"
+        class="position-absolute top-100 start-0 end-0 bg-white border rounded-bottom shadow-lg mt-1"
+        style="z-index: 1050; max-height: 70vh; overflow-y: auto; display: none;">
         <div class="p-3 text-center text-muted small" id="noResults" style="display:none;">
           <i class="bi bi-search"></i><br>
           Aucun résultat trouvé
@@ -457,32 +498,21 @@ document.addEventListener('DOMContentLoaded', function () {
         </div>
       </div>
     </div>
-    
-
-
-
-
-
     <!-- ACTIONS + USER -->
     <div class="d-flex gap-2 align-items-center">
-      <!-- jfngkjdnwksnijfl -->
-      <!-- BADGE CLOCHE – VERSION DYNAMIQUE (à coller dans ton header) -->
+      <!-- BADGE CLOCHE – VERSION DYNAMIQUE -->
       <div class="position-relative">
-        <button class="btn btn-light1" data-bs-toggle="modal" data-bs-target="#notificationsModal">
-          <i class="bi bi-bell fs-4"></i>
+        <button class="btn-inseed" data-bs-toggle="modal" data-bs-target="#notificationsModal">
+          <i class="bi bi-bell fs-3"></i>
           {% if unread_count > 0 %}
-            <span class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger"
-                  style="font-size: 0.65rem; min-width: 19px; height: 19px; display: flex; align-items: center; justify-content: center;">
-              {{ unread_count if unread_count < 100 else '99+' }}
-              <span class="visually-hidden">notifications non lues</span>
-            </span>
+          <span class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger"
+            style="font-size: 0.65rem; min-width: 19px; height: 19px; display: flex; align-items: center; justify-content: center;">
+            {{ unread_count if unread_count < 100 else '99+' }} <span class="visually-hidden">notifications non
+              lues</span>
+          </span>
           {% endif %}
         </button>
       </div>
-
-
-
-
       <button class="btn btn-light1"><i class="bi bi-gear fs-4"></i></button>
       <!-- USER DROPDOWN -->
       {% if current_user.is_authenticated %}
@@ -541,7 +571,6 @@ document.addEventListener('DOMContentLoaded', function () {
       {% endif %}
     </div>
   </div>
-
   <!-- === CONTENU SCROLLABLE === -->
   <div class="main-content">
     <!-- FLASH MESSAGES -->
@@ -559,32 +588,26 @@ document.addEventListener('DOMContentLoaded', function () {
     <!-- PAGE CONTENT -->
     {% block content %}{% endblock %}
   </div>
-
   <!-- Bootstrap JS -->
-  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
 
+
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
   <script>
     function markAsReadAndGo(notifId, url) {
-      // Empêche double clic
       const item = event.currentTarget;
       if (item.dataset.processing) return;
       item.dataset.processing = 'true';
       item.style.opacity = '0.7';
 
+      // 1. Marque comme lue d'abord
       fetch(`/drive/notification/${notifId}/read`, {
         method: 'POST',
-        headers: {
-          'X-Requested-With': 'XMLHttpRequest'
-        }
+        headers: { 'X-Requested-With': 'XMLHttpRequest' }
       })
       .then(r => r.json())
       .then(data => {
         if (data.success) {
-          // 1. Marque comme lue dans le modal
-          item.classList.remove('bg-light');
-          item.querySelector('.badge')?.remove();
-
-          // 2. Décrémente le badge principal (celui dans le header)
+          // Mise à jour visuelle du badge
           const badge = document.querySelector('.top-header .badge.bg-danger');
           if (badge) {
             let count = parseInt(badge.textContent.replace(/[^\d]/g, '')) || 0;
@@ -592,27 +615,66 @@ document.addEventListener('DOMContentLoaded', function () {
             if (count > 0) {
               badge.textContent = count > 99 ? '99+' : count;
             } else {
-              badge.remove();
+              badge.parentElement.innerHTML = '<i class="bi bi-bell fs-3"></i>'; // Supprime le badge
             }
           }
 
-          // 3. Ferme le modal + redirection
+          // Marque comme lue dans le modal
+          item.classList.remove('bg-light');
+          item.querySelector('.badge')?.remove();
+
+          // Ferme le modal
           const modal = bootstrap.Modal.getInstance(document.getElementById('notificationsModal'));
           modal.hide();
-          setTimeout(() => {
-            window.location.href = url;
-          }, 300);
+
+          // Redirection intelligente avec gestion d'erreur
+          fetch(url, { method: 'HEAD' }) // Teste si l'URL existe sans charger la page
+            .then(response => {
+              if (response.ok) {
+                window.location.href = url;
+              } else {
+                showDeletedNotification();
+              }
+            })
+            .catch(() => {
+              showDeletedNotification();
+            });
         }
       })
       .catch(() => {
         item.style.opacity = '1';
         delete item.dataset.processing;
+        alert("Erreur de connexion. Réessayez.");
       });
+    }
+
+    // Fonction qui affiche le beau message
+    function showDeletedNotification() {
+      // Crée un toast Bootstrap élégant
+      const toastHTML = `
+        <div class="toast align-items-center text-bg-warning border-0" role="alert" style="position:fixed; top:90px; right:20px; z-index:9999;">
+          <div class="d-flex">
+            <div class="toast-body">
+              <i class="bi bi-exclamation-triangle me-2"></i>
+              <strong>Contenu introuvable</strong><br>
+              <small>Ce dossier ou fichier a été supprimé ou déplacé.</small>
+            </div>
+            <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast"></button>
+          </div>
+        </div>
+      `;
+
+      document.body.insertAdjacentHTML('beforeend', toastHTML);
+      const toastEl = document.querySelector('.toast:last-child');
+      const toast = new bootstrap.Toast(toastEl, { delay: 6000 });
+      toast.show();
+
+      // Supprime le toast du DOM après affichage
+      toastEl.addEventListener('hidden.bs.toast', () => toastEl.remove());
     }
   </script>
 
 
   {% block scripts %}{% endblock %}
 </body>
-
 </html>

@@ -13,9 +13,17 @@ class File(db.Model):
     size = db.Column(db.Integer)
     visibility = db.Column(db.String(20), default='service')
     folder_id = db.Column(db.Integer, db.ForeignKey('folders.id'))
-    owner_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)  # AJOUTÉ
+    owner_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
     upload_date = db.Column(db.DateTime, default=datetime.utcnow)
     deleted = db.Column(db.Boolean, default=False)
 
     # Relations
     owner = db.relationship('User', backref='uploaded_files')
+
+    # AJOUT CRUCIAL : cascade + passive_deletes pour que tout soit automatique
+    file_favorites = db.relationship(
+        'Favorite',
+        backref='file',
+        cascade='all, delete-orphan',
+        passive_deletes=True   # Très important avec ondelete=CASCADE côté DB
+    )

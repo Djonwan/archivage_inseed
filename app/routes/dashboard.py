@@ -7,5 +7,5 @@ dashboard_bp = Blueprint('dashboard', __name__, template_folder='templates/dashb
 @dashboard_bp.route('/')
 @login_required
 def index():
-    from app.routes.drive import home  # ← Réutilise la fonction
-    return home()  # ← Même logique, même template
+    from app.routes.drive import home  
+    return home()  

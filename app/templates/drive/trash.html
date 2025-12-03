@@ -3,24 +3,18 @@
 
 {% block content %}
 <div class="container-fluid">
-
   <!-- EN-TÊTE -->
-  
   <div class="sticky-top bg-white border-bottom pb-2" style="top: 70px; z-index: 998;">
     <div class="container-fluid d-flex justify-content-between align-items-center">
       <h2 class="fw-bold mb-0">Corbeille</h2>
     </div>
   </div>
-
-
-
   {% if files or folders %}
   <div class="text-end mb-3">
     <button type="button" class="btn btn-danger btn-sm" data-bs-toggle="modal" data-bs-target="#emptyTrashModal">
       <i class="bi bi-trash3"></i> Vider la corbeille
     </button>
   </div>
-
   <!-- Modal vider corbeille -->
   <div class="modal fade" id="emptyTrashModal" tabindex="-1">
     <div class="modal-dialog">
@@ -42,162 +36,153 @@
       </div>
     </div>
   </div>
-{% endif %}
-
-
-
-
+  {% endif %}
   <!-- ÉLÉMENTS SUPPRIMÉS -->
   {% if files or folders %}
-    <div class="list-group list-group-flush">
+  <div class="list-group list-group-flush">
+    <!-- DOSSIERS -->
+    {% for folder in folders %}
+    <div class="list-group-item d-flex align-items-center py-3 px-2 rounded hover-elevate mb-2 bg-light">
+      <div class="me-3 text-center" style="width: 48px;">
+        <i class="bi bi-folder-fill text-warning" style="font-size: 1.75rem;"></i>
+      </div>
 
-      <!-- DOSSIERS -->
-      <!-- DOSSIERS -->
-      {% for folder in folders %}
-      <div class="list-group-item d-flex align-items-center py-3 px-2 rounded hover-elevate mb-2 bg-light">
-        <div class="me-3 text-center" style="width: 48px;">
-          <i class="bi bi-folder-fill text-warning" style="font-size: 1.75rem;"></i>
+      <div class="flex-grow-1">
+        <div class="fw-semibold text-dark">{{ folder.name }}</div>
+        <div class="text-muted small">
+          Dossier • {{ folder.created_at.strftime('%d/%m/%Y') }}
         </div>
-        
-        <div class="flex-grow-1">
-          <div class="fw-semibold text-dark">{{ folder.name }}</div>
-          <div class="text-muted small">
-            Dossier • {{ folder.created_at.strftime('%d/%m/%Y') }}
-          </div>
-          <div class="text-primary small mt-1">
-            <i class="bi bi-folder-fill"></i>
-            {% set breadcrumb = get_folder_breadcrumb(folder) %}
-            {% for item in breadcrumb[:-1] %}
-              {{ item.name }}{% if not loop.last %} / {% endif %}
-            {% endfor %}
-            {% if breadcrumb|length > 1 %}/{% endif %}
-          </div>
+        <div class="text-primary small mt-1">
+          <i class="bi bi-folder-fill"></i>
+          {% set breadcrumb = get_folder_breadcrumb(folder) %}
+          {% for item in breadcrumb[:-1] %}
+          {{ item.name }}{% if not loop.last %} / {% endif %}
+          {% endfor %}
+          {% if breadcrumb|length > 1 %}/{% endif %}
         </div>
+      </div>
 
-        <!-- BOUTONS : Restaurer + Supprimer définitivement -->
-        <div class="ms-auto d-flex gap-2">
-          <!-- Restaurer -->
-          <form action="{{ url_for('drive.restore_folder', folder_id=folder.id) }}" method="POST" class="d-inline">
-            <button type="submit" class="btn btn-sm btn-outline-success" title="Restaurer">
-              <i class="bi bi-arrow-counterclockwise"></i>
-            </button>
-          </form>
-
-          <!-- Supprimer définitivement -->
-          <button type="button" class="btn btn-sm btn-outline-danger" data-bs-toggle="modal" data-bs-target="#deleteFolder{{ folder.id }}">
-            <i class="bi bi-trash3"></i>
+      <!-- BOUTONS : Restaurer + Supprimer définitivement -->
+      <div class="ms-auto d-flex gap-2">
+        <!-- Restaurer -->
+        <form action="{{ url_for('drive.restore_folder', folder_id=folder.id) }}" method="POST" class="d-inline">
+          <button type="submit" class="btn btn-sm btn-outline-success" title="Restaurer">
+            <i class="bi bi-arrow-counterclockwise"></i>
           </button>
-        </div>
+        </form>
+
+        <!-- Supprimer définitivement -->
+        <button type="button" class="btn btn-sm btn-outline-danger" data-bs-toggle="modal"
+          data-bs-target="#deleteFolder{{ folder.id }}">
+          <i class="bi bi-trash3"></i>
+        </button>
       </div>
+    </div>
 
-      <!-- Modal de confirmation suppression définitive -->
-      <div class="modal fade" id="deleteFolder{{ folder.id }}" tabindex="-1">
-        <div class="modal-dialog modal-sm">
-          <div class="modal-content">
-            <div class="modal-header bg-danger text-white">
-              <h6 class="modal-title">Suppression définitive</h6>
-              <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
-            </div>
-            <div class="modal-body text-center">
-              <i class="bi bi-exclamation-triangle text-danger" style="font-size: 2.5rem;"></i>
-              <p class="mt-3 mb-0"><strong>{{ folder.name }}</strong></p>
-              <small class="text-muted">et tout son contenu seront supprimés <strong>pour toujours</strong>.</small>
-            </div>
-            <div class="modal-footer justify-content-center">
-              <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Annuler</button>
-              <form action="{{ url_for('drive.permanent_delete_folder', folder_id=folder.id) }}" method="POST" class="d-inline">
-                <button type="submit" class="btn btn-danger btn-sm">Supprimer pour toujours</button>
-              </form>
-            </div>
+    <!-- Modal de confirmation suppression définitive -->
+    <div class="modal fade" id="deleteFolder{{ folder.id }}" tabindex="-1">
+      <div class="modal-dialog modal-sm">
+        <div class="modal-content">
+          <div class="modal-header bg-danger text-white">
+            <h6 class="modal-title">Suppression définitive</h6>
+            <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
           </div>
-        </div>
-      </div>
-      {% endfor %}
-
-      <!-- FICHIERS -->
-      <!-- FICHIERS -->
-      {% for file in files %}
-        <div class="list-group-item d-flex align-items-center py-3 px-2 rounded hover-elevate mb-2 bg-light">
-          <div class="me-3 text-center" style="width: 48px;">
-            {% if file.mime_type.startswith('image/') %}
-              <i class="bi bi-file-image text-success" style="font-size: 1.75rem;"></i>
-            {% elif file.mime_type.startswith('video/') %}
-              <i class="bi bi-file-play text-danger" style="font-size: 1.75rem;"></i>
-            {% elif file.mime_type.startswith('audio/') %}
-              <i class="bi bi-file-music text-info" style="font-size: 1.75rem;"></i>
-            {% elif file.original_name.endswith('.pdf') %}
-              <i class="bi bi-file-pdf text-danger" style="font-size: 1.75rem;"></i>
-            {% elif file.original_name.endswith(('.doc', '.docx')) %}
-              <i class="bi bi-file-word text-primary" style="font-size: 1.75rem;"></i>
-            {% elif file.original_name.endswith(('.xls', '.xlsx')) %}
-              <i class="bi bi-file-excel text-success" style="font-size: 1.75rem;"></i>
-            {% else %}
-              <i class="bi bi-file-earmark text-secondary" style="font-size: 1.75rem;"></i>
-            {% endif %}
+          <div class="modal-body text-center">
+            <i class="bi bi-exclamation-triangle text-danger" style="font-size: 2.5rem;"></i>
+            <p class="mt-3 mb-0"><strong>{{ folder.name }}</strong></p>
+            <small class="text-muted">et tout son contenu seront supprimés <strong>pour toujours</strong>.</small>
           </div>
-
-          <div class="flex-grow-1">
-            <div class="fw-semibold text-dark">{{ file.original_name }}</div>
-            <div class="text-muted small">
-              {{ file.size|filesizeformat }} • {{ file.upload_date.strftime('%d/%m/%Y') }}
-            </div>
-            <div class="text-primary small mt-1">
-              <i class="bi bi-folder-fill"></i>
-              {% set breadcrumb = get_folder_breadcrumb(file.folder) %}
-              {% for item in breadcrumb %}
-                {{ item.name }}{% if not loop.last %} / {% endif %}
-              {% endfor %}
-            </div>
-          </div>
-
-          <div class="ms-auto d-flex gap-2">
-            <!-- Restaurer -->
-            <form action="{{ url_for('drive.restore_file', file_id=file.id) }}" method="POST" class="d-inline">
-              <button type="submit" class="btn btn-sm btn-outline-success" title="Restaurer">
-                <i class="bi bi-arrow-counterclockwise"></i>
-              </button>
+          <div class="modal-footer justify-content-center">
+            <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Annuler</button>
+            <form action="{{ url_for('drive.permanent_delete_folder', folder_id=folder.id) }}" method="POST"
+              class="d-inline">
+              <button type="submit" class="btn btn-danger btn-sm">Supprimer pour toujours</button>
             </form>
-
-            <!-- Supprimer définitivement -->
-            <button type="button" class="btn btn-sm btn-outline-danger" data-bs-toggle="modal" data-bs-target="#deleteFileModal{{ file.id }}">
-              <i class="bi bi-trash3"></i>
-            </button>
           </div>
         </div>
-
-        <!-- MODAL SUPPRESSION FICHIER (ID UNIQUE !) -->
-        <div class="modal fade" id="deleteFileModal{{ file.id }}" tabindex="-1" aria-hidden="true">
-          <div class="modal-dialog modal-sm">
-            <div class="modal-content">
-              <div class="modal-header bg-danger text-white">
-                <h6 class="modal-title">Suppression définitive</h6>
-                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
-              </div>
-              <div class="modal-body text-center">
-                <i class="bi bi-exclamation-triangle text-danger" style="font-size: 2.5rem;"></i>
-                <p class="mt-3 mb-0"><strong>{{ file.original_name }}</strong></p>
-                <small class="text-muted">sera supprimé <strong>pour toujours</strong>.</small>
-              </div>
-              <div class="modal-footer justify-content-center">
-                <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Annuler</button>
-                <form action="{{ url_for('drive.permanent_delete_file', file_id=file.id) }}" method="POST" class="d-inline">
-                  <button type="submit" class="btn btn-danger btn-sm">Supprimer pour toujours</button>
-                </form>
-              </div>
-            </div>
-          </div>
-        </div>
-      {% endfor %}
-
+      </div>
     </div>
+    {% endfor %}
+    <!-- FICHIERS -->
+    {% for file in files %}
+    <div class="list-group-item d-flex align-items-center py-3 px-2 rounded hover-elevate mb-2 bg-light">
+      <div class="me-3 text-center" style="width: 48px;">
+        {% if file.mime_type.startswith('image/') %}
+        <i class="bi bi-file-image text-success" style="font-size: 1.75rem;"></i>
+        {% elif file.mime_type.startswith('video/') %}
+        <i class="bi bi-file-play text-danger" style="font-size: 1.75rem;"></i>
+        {% elif file.mime_type.startswith('audio/') %}
+        <i class="bi bi-file-music text-info" style="font-size: 1.75rem;"></i>
+        {% elif file.original_name.endswith('.pdf') %}
+        <i class="bi bi-file-pdf text-danger" style="font-size: 1.75rem;"></i>
+        {% elif file.original_name.endswith(('.doc', '.docx')) %}
+        <i class="bi bi-file-word text-primary" style="font-size: 1.75rem;"></i>
+        {% elif file.original_name.endswith(('.xls', '.xlsx')) %}
+        <i class="bi bi-file-excel text-success" style="font-size: 1.75rem;"></i>
+        {% else %}
+        <i class="bi bi-file-earmark text-secondary" style="font-size: 1.75rem;"></i>
+        {% endif %}
+      </div>
+
+      <div class="flex-grow-1">
+        <div class="fw-semibold text-dark">{{ file.original_name }}</div>
+        <div class="text-muted small">
+          {{ file.size|filesizeformat }} • {{ file.upload_date.strftime('%d/%m/%Y') }}
+        </div>
+        <div class="text-primary small mt-1">
+          <i class="bi bi-folder-fill"></i>
+          {% set breadcrumb = get_folder_breadcrumb(file.folder) %}
+          {% for item in breadcrumb %}
+          {{ item.name }}{% if not loop.last %} / {% endif %}
+          {% endfor %}
+        </div>
+      </div>
+
+      <div class="ms-auto d-flex gap-2">
+        <!-- Restaurer -->
+        <form action="{{ url_for('drive.restore_file', file_id=file.id) }}" method="POST" class="d-inline">
+          <button type="submit" class="btn btn-sm btn-outline-success" title="Restaurer">
+            <i class="bi bi-arrow-counterclockwise"></i>
+          </button>
+        </form>
+
+        <!-- Supprimer définitivement -->
+        <button type="button" class="btn btn-sm btn-outline-danger" data-bs-toggle="modal"
+          data-bs-target="#deleteFileModal{{ file.id }}">
+          <i class="bi bi-trash3"></i>
+        </button>
+      </div>
+    </div>
+    <!-- MODAL SUPPRESSION FICHIER (ID UNIQUE !) -->
+    <div class="modal fade" id="deleteFileModal{{ file.id }}" tabindex="-1" aria-hidden="true">
+      <div class="modal-dialog modal-sm">
+        <div class="modal-content">
+          <div class="modal-header bg-danger text-white">
+            <h6 class="modal-title">Suppression définitive</h6>
+            <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+          </div>
+          <div class="modal-body text-center">
+            <i class="bi bi-exclamation-triangle text-danger" style="font-size: 2.5rem;"></i>
+            <p class="mt-3 mb-0"><strong>{{ file.original_name }}</strong></p>
+            <small class="text-muted">sera supprimé <strong>pour toujours</strong>.</small>
+          </div>
+          <div class="modal-footer justify-content-center">
+            <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Annuler</button>
+            <form action="{{ url_for('drive.permanent_delete_file', file_id=file.id) }}" method="POST" class="d-inline">
+              <button type="submit" class="btn btn-danger btn-sm">Supprimer pour toujours</button>
+            </form>
+          </div>
+        </div>
+      </div>
+    </div>
+    {% endfor %}
+
+  </div>
   {% else %}
-
-
-  
-    <div class="text-center py-5 text-muted">
-      <i class="bi bi-trash" style="font-size: 3.5rem;"></i>
-      <p class="mt-3">La corbeille est vide.</p>
-    </div>
+  <div class="text-center py-5 text-muted">
+    <i class="bi bi-trash" style="font-size: 3.5rem;"></i>
+    <p class="mt-3">La corbeille est vide.</p>
+  </div>
   {% endif %}
 
 </div>
