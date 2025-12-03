@@ -5,27 +5,28 @@
 {% block content %}
 <div class="sticky-top bg-white border-bottom pt-3 pb-2" style="top: 70px; z-index: 998;">
   <div class="container-fluid d-flex justify-content-between align-items-center">
-    <h2 class="fw-bold mb-0">Exploration des documents</h2>
+    <h2 class="fw-bold mb-0 text-dark">Exploration des documents</h2>
 
-    <!-- FILTRES PUISSANTS -->
-    <div class="btn-group shadow-sm" role="group">
+    <!-- FILTRES ÉLÉGANTS, DOUX & PROFESSIONNELS -->
+    <div class="btn-group shadow-sm rounded-pill overflow-hidden border" role="group" style="border-color: #dee2e6 !important;">
+      
       <input type="radio" class="btn-check" name="folderFilter" id="filterAll" autocomplete="off" checked>
-      <label class="btn btn-outline-primary" for="filterAll">
+      <label class="btn btn-outline-secondary fw-semibold px-4 py-2" for="filterAll">
         Tous
       </label>
 
       <input type="radio" class="btn-check" name="folderFilter" id="filterPersonal" autocomplete="off">
-      <label class="btn btn-outline-warning" for="filterPersonal">
+      <label class="btn btn-outline-warning fw-semibold px-4 py-2 border-warning-subtle" for="filterPersonal">
         Mes personnels
       </label>
 
       <input type="radio" class="btn-check" name="folderFilter" id="filterSharedByMe" autocomplete="off">
-      <label class="btn btn-outline-primary" for="filterSharedByMe">
+      <label class="btn btn-outline-info fw-semibold px-4 py-2 border-info-subtle" for="filterSharedByMe">
         Partagés par moi
       </label>
 
       <input type="radio" class="btn-check" name="folderFilter" id="filterReceived" autocomplete="off">
-      <label class="btn btn-outline-success" for="filterReceived">
+      <label class="btn btn-outline-success fw-semibold px-4 py-2 border-success-subtle" for="filterReceived">
         Reçus
       </label>
     </div>
@@ -44,14 +45,13 @@
 document.addEventListener('DOMContentLoaded', function () {
   const folderList = document.getElementById('folderList');
 
-  // Écoute des boutons radio
+  // Appliquer le filtre
   document.querySelectorAll('input[name="folderFilter"]').forEach(radio => {
     radio.addEventListener('change', applyFilter);
   });
 
   function applyFilter() {
     const filterValue = document.querySelector('input[name="folderFilter"]:checked').id;
-
     let visibleCount = 0;
 
     document.querySelectorAll('.folder-card').forEach(card => {
@@ -59,62 +59,42 @@ document.addEventListener('DOMContentLoaded', function () {
       const isOwner = card.dataset.isOwner === 'true';
 
       let show = false;
-
-      if (filterValue === 'filterAll') {
-        show = true;
-      } else if (filterValue === 'filterPersonal') {
-        show = isPersonal;
-      } else if (filterValue === 'filterSharedByMe') {
-        show = isOwner && !isPersonal;
-      } else if (filterValue === 'filterReceived') {
-        show = !isOwner;
-      }
+      if (filterValue === 'filterAll') show = true;
+      else if (filterValue === 'filterPersonal') show = isPersonal;
+      else if (filterValue === 'filterSharedByMe') show = isOwner && !isPersonal;
+      else if (filterValue === 'filterReceived') show = !isOwner;
 
       card.style.display = show ? 'block' : 'none';
       if (show) visibleCount++;
     });
 
-    // Message personnalisé si aucun résultat
+    // Message doux et pro quand aucun résultat
     const existingMsg = folderList.querySelector('.no-results-msg');
     if (existingMsg) existingMsg.remove();
 
     if (visibleCount === 0) {
-      let message = '';
-      let icon = '';
-      let btnText = '';
-      let btnLink = '';
+      let config = {
+        filterAll: { icon: 'bi-folder-symlink', msg: 'Aucun dossier disponible', btn: 'Créer un dossier', link: "{{ url_for('drive.create_folder') }}" },
+        filterPersonal: { icon: 'bi-person-lock', msg: 'Vous n’avez aucun dossier personnel.', btn: 'Créer un dossier personnel', link: "{{ url_for('drive.create_folder') }}" },
+        filterSharedByMe: { icon: 'bi-share-fill', msg: 'Vous n’avez partagé aucun dossier.', btn: 'Créer et partager', link: "{{ url_for('drive.create_folder') }}" },
+        filterReceived: { icon: 'bi-inbox', msg: 'Aucun dossier partagé avec vous.', btn: 'Explorer les dossiers', link: "{{ url_for('drive.explore') }}" }
+      };
 
-      if (filterValue === 'filterPersonal') {
-        icon = 'bi-person-lock';
-        message = 'Vous n’avez aucun dossier personnel.';
-        btnText = 'Créer un dossier personnel';
-        btnLink = "{{ url_for('drive.create_folder') }}";
-      } else if (filterValue === 'filterSharedByMe') {
-        icon = 'bi-share-fill';
-        message = 'Vous n’avez partagé aucun dossier.';
-        btnText = 'Créer et partager un dossier';
-        btnLink = "{{ url_for('drive.create_folder') }}";
-      } else if (filterValue === 'filterReceived') {
-        icon = 'bi-box-arrow-in-down';
-        message = 'Aucun dossier partagé avec vous.';
-        btnText = 'Explorer les dossiers publics';
-        btnLink = "{{ url_for('drive.explore') }}";
-      }
+      const { icon, msg, btn, link } = config[filterValue] || config.filterAll;
 
       folderList.innerHTML = `
         <div class="col-12 text-center text-muted py-5 no-results-msg">
-          <i class="bi ${icon}" style="font-size: 4.5rem; opacity: 0.4;"></i>
-          <p class="mt-4 fs-4">${message}</p>
-          <a href="${btnLink}" class="btn btn-lg btn-outline-primary mt-3">
-            ${btnText}
+          <i class="bi ${icon} mb-4" style="font-size: 4.5rem; opacity: 0.35;"></i>
+          <h4 class="mb-3">${msg}</h4>
+          <a href="${link}" class="btn btn-outline-primary px-4 py-2 fw-semibold">
+            ${btn}
           </a>
         </div>
       `;
     }
   }
 
-  // Lancer le filtre au chargement (au cas où un filtre est pré-sélectionné)
-  applyFilter();
+  applyFilter(); // au chargement
 });
 </script>
 {% endblock %}
