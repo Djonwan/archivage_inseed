@@ -1449,6 +1449,62 @@ def format_bytes(bytes_num):
 
 
 #route pour la barre de rechercher
+# @drive_bp.route('/search')
+# @login_required
+# def search():
+#     query = request.args.get('q', '').strip()
+#     if not query or len(query) < 2:
+#         return jsonify({'files': [], 'folders': []})
+
+#     files = File.query.filter(
+#         File.owner_id == current_user.id,
+#         File.deleted == False,
+#         File.original_name.ilike(f'%{query}%')
+#     ).order_by(File.upload_date.desc()).limit(10).all()
+
+#     folders = Folder.query.filter(
+#         Folder.owner_id == current_user.id,
+#         Folder.deleted == False,
+#         Folder.name.ilike(f'%{query}%')
+#     ).order_by(Folder.created_at.desc()).limit(10).all()
+
+#     file_results = []
+#     for f in files:
+#         folder_path = "Racine"
+#         if f.folder:
+#             breadcrumb = get_folder_breadcrumb(f.folder)
+#             folder_path = " → ".join([item.name for item in breadcrumb])
+
+#         url = url_for('drive.folder', folder_id=f.folder_id or 0)
+#         url += f"?highlight={f.id}"
+
+#         file_results.append({
+#             'name': f.original_name,
+#             'url': url,
+#             'folder_path': folder_path,
+#             'size': format_bytes(f.size) if hasattr(f, 'size') and f.size is not None else '—'
+#         })
+
+#     folder_results = []
+#     for folder in folders:
+#         breadcrumb = get_folder_breadcrumb(folder)
+#         path = "Racine"
+#         if len(breadcrumb) > 1:
+#             path = " → ".join([item.name for item in breadcrumb[:-1]])
+
+#         folder_results.append({
+#             'name': folder.name,
+#             'url': url_for('drive.folder', folder_id=folder.id),
+#             'path': path
+#         })
+
+#     return jsonify({
+#         'files': file_results,
+#         'folders': folder_results
+#     })
+
+
+# route pour la barre de recherche (VERSION FINALE - RECHERCHE TOUT)
 @drive_bp.route('/search')
 @login_required
 def search():
@@ -1456,18 +1512,57 @@ def search():
     if not query or len(query) < 2:
         return jsonify({'files': [], 'folders': []})
 
-    files = File.query.filter(
-        File.owner_id == current_user.id,
+    query_like = f'%{query}%'
+
+    # ===================================================================
+    # 1. RECHERCHE DES FICHIERS ACCESSIBLES
+    # ===================================================================
+    accessible_file_subquery = db.session.query(File.id).filter(
         File.deleted == False,
-        File.original_name.ilike(f'%{query}%')
-    ).order_by(File.upload_date.desc()).limit(10).all()
+        or_(
+            File.owner_id == current_user.id,  # ses propres fichiers
+            File.folder_id.in_(  # fichiers dans un dossier partagé avec lui
+                db.session.query(Folder.id).filter(
+                    or_(
+                        Folder.owner_id == current_user.id,
+                        Folder.id.in_(
+                            db.session.query(FolderPermission.folder_id).filter(
+                                FolderPermission.user_id == current_user.id,
+                                FolderPermission.can_read == True
+                            )
+                        )
+                    ),
+                    Folder.deleted == False
+                )
+            )
+        ),
+        File.original_name.ilike(query_like)
+    ).limit(10).subquery()
 
-    folders = Folder.query.filter(
-        Folder.owner_id == current_user.id,
+    files = File.query.filter(File.id.in_(accessible_file_subquery)).order_by(File.upload_date.desc()).all()
+
+    # ===================================================================
+    # 2. RECHERCHE DES DOSSIERS ACCESSIBLES
+    # ===================================================================
+    accessible_folder_ids = db.session.query(Folder.id).filter(
         Folder.deleted == False,
-        Folder.name.ilike(f'%{query}%')
-    ).order_by(Folder.created_at.desc()).limit(10).all()
+        or_(
+            Folder.owner_id == current_user.id,
+            Folder.id.in_(
+                db.session.query(FolderPermission.folder_id).filter(
+                    FolderPermission.user_id == current_user.id,
+                    FolderPermission.can_read == True
+                )
+            )
+        ),
+        Folder.name.ilike(query_like)
+    ).limit(10).subquery()
 
+    folders = Folder.query.filter(Folder.id.in_(accessible_folder_ids)).order_by(Folder.created_at.desc()).all()
+
+    # ===================================================================
+    # 3. FORMATAGE DES RÉSULTATS
+    # ===================================================================
     file_results = []
     for f in files:
         folder_path = "Racine"
@@ -1482,7 +1577,8 @@ def search():
             'name': f.original_name,
             'url': url,
             'folder_path': folder_path,
-            'size': format_bytes(f.size) if hasattr(f, 'size') and f.size is not None else '—'
+            'size': format_bytes(f.size) if f.size else '—',
+            'icon': 'file-earmark-text'
         })
 
     folder_results = []
@@ -1495,13 +1591,16 @@ def search():
         folder_results.append({
             'name': folder.name,
             'url': url_for('drive.folder', folder_id=folder.id),
-            'path': path
+            'path': path,
+            'is_personal': folder.is_personal,
+            'icon': 'folder-fill'
         })
 
     return jsonify({
         'files': file_results,
         'folders': folder_results
     })
+
 
 
 #fonction utulitaire pour la taille des stockage des donneees du user connecter

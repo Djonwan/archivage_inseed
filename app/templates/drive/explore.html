@@ -7,11 +7,26 @@
   <div class="container-fluid d-flex justify-content-between align-items-center">
     <h2 class="fw-bold mb-0">Exploration des documents</h2>
 
-    <!-- TOGGLE : Afficher seulement mes dossiers personnels -->
-    <div class="form-check form-switch">
-      <input class="form-check-input" type="checkbox" id="personalOnlyToggle" style="transform: scale(1.4);">
-      <label class="form-check-label fw-bold text-primary" for="personalOnlyToggle">
-        <i class="bi bi-person-lock"></i> Mes dossiers personnels uniquement
+    <!-- FILTRES PUISSANTS -->
+    <div class="btn-group shadow-sm" role="group">
+      <input type="radio" class="btn-check" name="folderFilter" id="filterAll" autocomplete="off" checked>
+      <label class="btn btn-outline-primary" for="filterAll">
+        Tous
+      </label>
+
+      <input type="radio" class="btn-check" name="folderFilter" id="filterPersonal" autocomplete="off">
+      <label class="btn btn-outline-warning" for="filterPersonal">
+        Mes personnels
+      </label>
+
+      <input type="radio" class="btn-check" name="folderFilter" id="filterSharedByMe" autocomplete="off">
+      <label class="btn btn-outline-primary" for="filterSharedByMe">
+        Partagés par moi
+      </label>
+
+      <input type="radio" class="btn-check" name="folderFilter" id="filterReceived" autocomplete="off">
+      <label class="btn btn-outline-success" for="filterReceived">
+        Reçus
       </label>
     </div>
   </div>
@@ -27,40 +42,79 @@
 {% block scripts %}
 <script>
 document.addEventListener('DOMContentLoaded', function () {
-  const toggle = document.getElementById('personalOnlyToggle');
   const folderList = document.getElementById('folderList');
 
-  toggle.addEventListener('change', function () {
-    const isPersonalOnly = this.checked;
+  // Écoute des boutons radio
+  document.querySelectorAll('input[name="folderFilter"]').forEach(radio => {
+    radio.addEventListener('change', applyFilter);
+  });
 
-    // Masquer/Afficher les cartes
+  function applyFilter() {
+    const filterValue = document.querySelector('input[name="folderFilter"]:checked').id;
+
+    let visibleCount = 0;
+
     document.querySelectorAll('.folder-card').forEach(card => {
       const isPersonal = card.dataset.isPersonal === 'true';
-      if (isPersonalOnly) {
-        card.style.display = isPersonal ? 'block' : 'none';
-      } else {
-        card.style.display = 'block';
+      const isOwner = card.dataset.isOwner === 'true';
+
+      let show = false;
+
+      if (filterValue === 'filterAll') {
+        show = true;
+      } else if (filterValue === 'filterPersonal') {
+        show = isPersonal;
+      } else if (filterValue === 'filterSharedByMe') {
+        show = isOwner && !isPersonal;
+      } else if (filterValue === 'filterReceived') {
+        show = !isOwner;
       }
+
+      card.style.display = show ? 'block' : 'none';
+      if (show) visibleCount++;
     });
 
-    // Message si aucun dossier personnel
-    const visibleCards = document.querySelectorAll('.folder-card[style*="display: block"], .folder-card:not([style])');
-    const noFolderMsg = folderList.querySelector('.no-personal-folder');
-    if (isPersonalOnly && visibleCards.length === 0) {
-      if (!noFolderMsg) {
-        folderList.innerHTML = `
-          <div class="col-12 text-center text-muted py-5">
-            <i class="bi bi-person-lock" style="font-size: 4rem; opacity: 0.5;"></i>
-            <p class="mt-4 fs-5">Vous n'avez aucun dossier personnel pour le moment.</p>
-            <a href="{{ url_for('drive.create_folder') }}" class="btn btn-outline-primary mt-3">
-              <i class="bi bi-plus-circle"></i> Créer mon premier dossier personnel
-            </a>
-          </div>`;
+    // Message personnalisé si aucun résultat
+    const existingMsg = folderList.querySelector('.no-results-msg');
+    if (existingMsg) existingMsg.remove();
+
+    if (visibleCount === 0) {
+      let message = '';
+      let icon = '';
+      let btnText = '';
+      let btnLink = '';
+
+      if (filterValue === 'filterPersonal') {
+        icon = 'bi-person-lock';
+        message = 'Vous n’avez aucun dossier personnel.';
+        btnText = 'Créer un dossier personnel';
+        btnLink = "{{ url_for('drive.create_folder') }}";
+      } else if (filterValue === 'filterSharedByMe') {
+        icon = 'bi-share-fill';
+        message = 'Vous n’avez partagé aucun dossier.';
+        btnText = 'Créer et partager un dossier';
+        btnLink = "{{ url_for('drive.create_folder') }}";
+      } else if (filterValue === 'filterReceived') {
+        icon = 'bi-box-arrow-in-down';
+        message = 'Aucun dossier partagé avec vous.';
+        btnText = 'Explorer les dossiers publics';
+        btnLink = "{{ url_for('drive.explore') }}";
       }
-    } else if (!isPersonalOnly && folderList.querySelector('.no-personal-folder')) {
-      location.reload(); // recharge proprement
+
+      folderList.innerHTML = `
+        <div class="col-12 text-center text-muted py-5 no-results-msg">
+          <i class="bi ${icon}" style="font-size: 4.5rem; opacity: 0.4;"></i>
+          <p class="mt-4 fs-4">${message}</p>
+          <a href="${btnLink}" class="btn btn-lg btn-outline-primary mt-3">
+            ${btnText}
+          </a>
+        </div>
+      `;
     }
-  });
+  }
+
+  // Lancer le filtre au chargement (au cas où un filtre est pré-sélectionné)
+  applyFilter();
 });
 </script>
 {% endblock %}
