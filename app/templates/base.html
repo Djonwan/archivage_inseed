@@ -409,6 +409,85 @@
   // Optionnel : mise à jour après upload (si tu as un événement)
   document.addEventListener('file:uploaded', updateTotalStorage);
 </script>
+
+<script>
+  document.addEventListener('DOMContentLoaded', function () {
+    const dropdown = document.getElementById('user-stats-dropdown');
+    const statsContainer = document.getElementById('stats-content');
+
+    // Fonction qui charge les stats
+    function loadUserStats() {
+      fetch('{{ url_for("drive.user_stats") }}')
+        .then(response => response.json())
+        .then(data => {
+          if (data.error) {
+            statsContainer.innerHTML = `<small class="text-danger">${data.error}</small>`;
+            return;
+          }
+
+          statsContainer.innerHTML = `
+            <div class="row text-center g-2">
+              <div class="col-6">
+                <div class="p-2 bg-light rounded">
+                  <div class="fw-bold text-primary">${data.total_owned_folders}</div>
+                  <small>Dossiers créés</small>
+                </div>
+              </div>
+              <div class="col-6">
+                <div class="p-2 bg-light rounded">
+                  <div class="fw-bold text-success">${data.personal_folders}</div>
+                  <small>Dossiers personnels</small>
+                </div>
+              </div>
+              <div class="col-6">
+                <div class="p-2 bg-light rounded">
+                  <div class="fw-bold text-info">${data.shared_by_me}</div>
+                  <small>Dosssier partagés</small>
+                </div>
+              </div>
+              <div class="col-6">
+                <div class="p-2 bg-light rounded">
+                  <div class="fw-bold text-info">${data.shared_with_me}</div>
+                  <small>Dosssier reçus</small>
+                </div>
+              </div>
+              <div class="col-6">
+                <div class="p-2 bg-light rounded">
+                  <div class="fw-bold text-info">${data.total_files}</div>
+                  <small>Mes fichiers</small>
+                </div>
+              </div>
+              <div class="col-6">
+                <div class="p-2 bg-light rounded">
+                  <div class="fw-bold text-warning">${data.favorite_files} <i class="bi bi-star-fill"></i></div>
+                  <small>Mes favoris</small>
+                </div>
+              </div>
+            </div>
+          `;
+        })
+        .catch(err => {
+          console.error('Erreur chargement stats:', err);
+          statsContainer.innerHTML = '<small class="text-danger">Erreur de chargement</small>';
+        });
+    }
+
+    // Chargement au moment où le dropdown s'ouvre
+    dropdown.addEventListener('shown.bs.dropdown', loadUserStats);
+
+    // Optionnel : recharger au focus si tu veux rafraîchir à chaque ouverture
+    document.getElementById('userDropdownBtn').addEventListener('click', function () {
+      // Petit délai pour que Bootstrap ait fini d'afficher le menu
+      setTimeout(() => {
+        if (dropdown.classList.contains('show')) {
+          loadUserStats();
+        }
+      }, 100);
+    });
+  });
+</script>
+
+
 <body>
   <!-- === SIDEBAR FIXE === -->
   <div class="sidebar">
@@ -515,59 +594,71 @@
       </div>
       <button class="btn btn-light1"><i class="bi bi-gear fs-4"></i></button>
       <!-- USER DROPDOWN -->
+      <!-- USER DROPDOWN -->
       {% if current_user.is_authenticated %}
-      <div class="dropdown">
-        <button class="btn btn-light1 rounded-circle overflow-hidden p-0 border" data-bs-toggle="dropdown"
-          style="width:42px; height:42px;">
-          {% if current_user.profile_picture and current_user.profile_picture != 'default.jpg' %}
-          <img src="{{ url_for('static', filename='img/profiles/' ~ current_user.profile_picture) }}" alt="Profil"
-            class="w-100 h-100" style="object-fit: cover;">
-          {% else %}
-          <img src="{{ url_for('static', filename='img/profiles/default.jpg') }}" alt="Profil" class="w-100 h-100"
-            style="object-fit: cover;">
-          {% endif %}
-        </button>
+        <div class="dropdown">
+          <button class="btn btn-light1 rounded-circle overflow-hidden p-0 border" 
+                  data-bs-toggle="dropdown" id="userDropdownBtn"
+                  style="width:42px; height:42px;">
+            {% if current_user.profile_picture and current_user.profile_picture != 'default.jpg' %}
+              <img src="{{ url_for('static', filename='img/profiles/' ~ current_user.profile_picture) }}" 
+                  alt="Profil" class="w-100 h-100" style="object-fit: cover;">
+            {% else %}
+              <img src="{{ url_for('static', filename='img/profiles/default.jpg') }}" 
+                  alt="Profil" class="w-100 h-100" style="object-fit: cover;">
+            {% endif %}
+          </button>
 
-        <ul class="dropdown-menu dropdown-menu-end">
-          <li>
-            <div class="dropdown-item-text text-center py-3">
-              <img
-                src="{{ url_for('static', filename='img/profiles/' ~ (current_user.profile_picture or 'default.jpg')) }}"
-                class="rounded-circle mb-2" width="70" height="70"
-                style="object-fit: cover; border: 3px solid #fff; box-shadow: 0 2px 8px rgba(0,0,0,0.2);">
-              <div>
-                <strong class="d-block">{{ current_user.name }}</strong>
-                <small class="text-muted">{{ current_user.email }}</small>
-                <small class="badge bg-primary mt-1">{{ current_user.role.replace('_', ' ') | title }}</small>
+          <ul class="dropdown-menu dropdown-menu-end shadow-lg" id="user-stats-dropdown" style="width: 20rem;" >
+            <!-- En-tête avec photo et infos -->
+            <li>
+              <div class="dropdown-item-text text-center py-3">
+                <img src="{{ url_for('static', filename='img/profiles/' ~ (current_user.profile_picture or 'default.jpg')) }}"
+                    class="rounded-circle mb-2" width="70" height="70"
+                    style="object-fit: cover; border: 3px solid #fff; box-shadow: 0 2px 8px rgba(0,0,0,0.2);">
+                <div>
+                  <strong class="d-block">{{ current_user.name }}</strong>
+                  <small class="text-muted">{{ current_user.email }}</small><br>
+                  <small class="badge bg-primary mt-1">{{ current_user.role.replace('_', ' ') | title }}</small>
+                </div>
               </div>
-            </div>
-          </li>
-          <li>
-            <hr class="dropdown-divider">
-          </li>
+            </li>
+            <li><hr class="dropdown-divider"></li>
 
-          <!-- Visible UNIQUEMENT pour super_admin -->
-          {% if current_user.is_super_admin() %}
-          <li>
-            <a class="dropdown-item text-success fw-500" href="{{ url_for('admin.create_user') }}">
-              <i class="bi bi-person-plus-fill"></i> Ajouter un utilisateur
-            </a>
-          </li>
-          <li>
-            <a class="dropdown-item text-primary fw-500" href="{{ url_for('admin.list_users') }}">
-              <i class="bi bi-people-fill"></i> Gestion des utilisateurs
-            </a>
-          </li>
-          <li>
-            <hr class="dropdown-divider">
-          </li>
-          {% endif %}
+            <!-- Section Statistiques (chargées dynamiquement) -->
+            <li>
+              <div class="px-3 py-2">
+                <h6 class="dropdown-header fw-bold text-primary">
+                  <i class="bi bi-graph-up me-2"></i>Mes statistiques
+                </h6>
+                <div id="stats-content" class="text-muted small">
+                  <div class="text-center">
+                    <div class="spinner-border spinner-border-sm text-primary" role="status">
+                      <span class="visually-hidden">Chargement...</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </li>
+            <li><hr class="dropdown-divider"></li>
 
-          <li><a class="dropdown-item text-danger" href="{{ url_for('auth.logout') }}">
-              <i class="bi bi-box-arrow-right"></i> Déconnexion
-            </a></li>
-        </ul>
-      </div>
+            <!-- Liens Admin -->
+            {% if current_user.is_super_admin() %}
+            <li><a class="dropdown-item text-success fw-500" href="{{ url_for('admin.create_user') }}">
+                <i class="bi bi-person-plus-fill"></i> Ajouter un utilisateur
+              </a></li>
+            <li><a class="dropdown-item text-primary fw-500" href="{{ url_for('admin.list_users') }}">
+                <i class="bi bi-people-fill"></i> Gestion des utilisateurs
+              </a></li>
+            <li><hr class="dropdown-divider"></li>
+            {% endif %}
+
+            <!-- Déconnexion -->
+            <li><a class="dropdown-item text-danger" href="{{ url_for('auth.logout') }}">
+                <i class="bi bi-box-arrow-right"></i> Déconnexion
+              </a></li>
+          </ul>
+        </div>
       {% endif %}
     </div>
   </div>
@@ -672,8 +763,8 @@
       // Supprime le toast du DOM après affichage
       toastEl.addEventListener('hidden.bs.toast', () => toastEl.remove());
     }
+ 
   </script>
-
 
   {% block scripts %}{% endblock %}
 </body>

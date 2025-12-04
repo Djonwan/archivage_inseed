@@ -1641,7 +1641,48 @@ def format_bytes(bytes_num):
 
 
 
+@drive_bp.route('/user-stats')
+@login_required
+def user_stats():
+    try:
+        # 1. Tous les dossiers créés par l'utilisateur (personnels + partagés par lui)
+        total_owned_folders = Folder.query.filter_by(
+            owner_id=current_user.id, deleted=False
+        ).count()
 
+        # 2. Dossiers personnels (is_personal = True)
+        personal_folders = Folder.query.filter_by(
+            owner_id=current_user.id, is_personal=True, deleted=False
+        ).count()
 
+        # 3. Dossiers que j'ai créés ET que j'ai partagés à au moins une personne
+        shared_by_me = db.session.query(Folder.id) \
+            .filter(Folder.owner_id == current_user.id, Folder.deleted == False) \
+            .join(FolderPermission, Folder.id == FolderPermission.folder_id) \
+            .distinct().count()
 
+        # 4. Dossiers partagés AVEC MOI (créés par d'autres)
+        shared_with_me = db.session.query(FolderPermission.folder_id) \
+            .filter(
+                FolderPermission.user_id == current_user.id,
+                FolderPermission.can_read == True
+            ).distinct().count()
 
+        # 5. Mes fichiers
+        total_files = File.query.filter_by(owner_id=current_user.id, deleted=False).count()
+
+        # 6. Favoris
+        favorite_files = Favorite.query.filter_by(user_id=current_user.id).count()
+
+        return jsonify({
+            'total_owned_folders': total_owned_folders,        # Tous mes dossiers créés
+            'personal_folders': personal_folders,              # Mes dossiers personnels
+            'shared_by_me': shared_by_me,                      # NOUVEAU : que j'ai partagés
+            'shared_with_me': shared_with_me,                  # NOUVEAU : reçus
+            'total_files': total_files,
+            'favorite_files': favorite_files,
+        })
+
+    except Exception as e:
+        print("ERREUR user_stats:", e)
+        return jsonify({'error': 'Impossible de charger les statistiques'}), 500

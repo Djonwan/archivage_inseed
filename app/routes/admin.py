@@ -289,6 +289,56 @@ def toggle_user_active(user_id):
 
 
 
+# la route d un petit stat 
+@admin_bp.route('/user-stats')
+@login_required
+def user_stats():
+    # 1. Dossiers créés par l'utilisateur (peu importe le parent)
+    total_owned_folders = Folder.query.filter(
+        Folder.owner_id == current_user.id,
+        Folder.deleted == False
+    ).count()
+
+    # 2. Dossiers personnels (is_personal = True)
+    personal_folders = Folder.query.filter(
+        Folder.owner_id == current_user.id,
+        Folder.is_personal == True,
+        Folder.deleted == False
+    ).count()
+
+    # 3. Dossiers auxquels il a accès via permission (en plus des siens)
+    accessible_via_permission = db.session.query(FolderPermission.folder_id).filter(
+        FolderPermission.user_id == current_user.id,
+        FolderPermission.can_read == True
+    ).distinct().count()
+
+    # 4. Fichiers appartenant à l'utilisateur
+    total_user_files = File.query.filter(
+        File.owner_id == current_user.id,
+        File.deleted == False
+    ).count()
+
+    # 5. Fichiers en favoris
+    favorite_files_count = Favorite.query.filter(
+        Favorite.user_id == current_user.id
+    ).count()
+
+    stats = {
+        'total_owned_folders': total_owned_folders,
+        'personal_folders': personal_folders,
+        'accessible_shared_folders': accessible_via_permission,
+        'total_files': total_user_files,
+        'favorite_files': favorite_files_count,
+    }
+
+    return jsonify(stats)
+
+
+
+
+
+
+
 
 
 
